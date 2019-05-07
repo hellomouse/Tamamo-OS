@@ -391,7 +391,15 @@ end
 
 -- Screen drawing methods --
 
-function api.drawRect()
+-- Draw a rectangle (border) with current bg and fg colors,
+-- with optional transparency
+function api.drawRect(x, y, w, h, symbol, transparency)
+  if #symbol ~= 1 then return false end
+  if x < 1 or y < 1 or x > buffWidth or y > buffHeight then return false end
+
+  -- TODO just add the frame thing like open OS does
+
+  return true
 end
 
 -- Fill a rectangle with the current bg and fg colors,
@@ -420,6 +428,7 @@ function api.fillRect(x, y, w, h, symbol, transparency)
     ::continue::
   end end
 
+  -- Reset original bg / fg colors
   api.setBackground(currentBgSave)
   api.setForeground(currentFgSave)
   return true
@@ -434,7 +443,51 @@ end
 function api.fillEllipse()
 end
 
-function api.drawLine()
+-- Draw a line (Using braille characters)
+-- from 1 point to another, optionally with transparency
+function api.drawLine(x1, y1, x2, y2, transparency)
+  x1, y1, x2, y2 = floor(x1), floor(y1), floor(x2), floor(y2)
+
+  -- Save current colors
+  local currentFgSave, currentBgSave = currentFg, currentBg
+  local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
+
+  -- Horz line
+  if y1 == y2 then
+    for x = x1, x2 do
+      if x < 1 then goto continue end
+      if x > buffWidth then break end
+
+      bg, fg, sym = api.getRaw(x, y1)
+      api.setBackground(color.getProminentColor(fg, bg, sym))
+      api.setForeground(color.blend(bg, cfg, transparency))
+      api.set(x, y1, "▔", false, true)
+
+      ::continue::
+    end
+    return true
+  end
+
+  -- Vertical line
+  if x1 == x2 then
+    for y = y1, y2 do
+      if y < 1 then goto continue end
+      if y > buffHeight then break end
+
+      bg, fg, sym = api.getRaw(x1, y)
+      api.setBackground(color.getProminentColor(fg, bg, sym))
+      api.setForeground(color.blend(bg, cfg, transparency))
+      api.set(x1, y, "▏", false, true)
+
+      ::continue::
+    end
+    return true
+  end
+
+  -- Reset original bg / fg colors
+  api.setBackground(currentBgSave)
+  api.setForeground(currentFgSave)
+  return true
 end
 
 -- Set gpu proxy

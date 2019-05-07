@@ -51,6 +51,7 @@ scren optimize with fill and rectangle finding
     - if bg and fg count > some number then set background 
 - vertical drawing
 
+optimize continues in fill - if y then break if x then goto next y
 
 screen if fails to fill then dont update buffer
 - copy - check bounds and shit 
