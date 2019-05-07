@@ -1,0 +1,5 @@
+local screen = require("screen")
+screen.setBackground(0xFF0000)
+screen.fill(10, 10, 100, 20, " ")
+screen.setBackground(0x000000)
+screen.drawRect(10, 10, 80, 10, " ", 0.5)

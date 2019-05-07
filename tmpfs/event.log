@@ -1,0 +1,10 @@
+boot/91_gpu.lua:16: attempt to index global 'api' (a nil value)
+boot/91_gpu.lua:16: attempt to index global 'api' (a nil value)
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: /lib/tamamo/screen.lua:231: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:231: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:241: attempt to compare nil with number
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index

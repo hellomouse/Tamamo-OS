@@ -1,0 +1,80 @@
+lib/core/boot.lua - boot sequence
+
+https://raw.githubusercontent.com/Shuudoushi/SecureOS/release/installer.lua
+
+cd src
+lua boot.lua /path/to/my/emulated/machine_a
+
+https://ocdoc.cil.li/api:computer
+
+https://oc.cil.li/topic/1801-kestrelos-safe-and-powerful-windows-alike-os/?tab=comments#comment-8311 
+
+
+http://www.lua.org/pil/contents.html
+https://oc.cil.li/topic/864-chenthread-image-format-high-quality-images-on-opencomputers/
+https://oc.cil.li/topic/1718-binary-read-and-write-how-does-it-work-exactly/
+
+https://ocdoc.cil.li/api:filesystem
+
+https://ocdoc.cil.li/component:gpu
+https://github.com/IgorTimofeev/MineOS/wiki/Component-API 
+https://oc.cil.li/topic/421-tar-for-opencomputers/ 
+https://ocdoc.cil.li/api:thread
+https://www.reddit.com/r/feedthebeast/comments/4535b8/draconic_evolution_reactor_for_science/ 
+
+Boot options 
+- Disk options 
+- internet recovery
+- Shutdown
+- Back 
+
+hashlib
+
+install from compressed archive
+
+image lib
+- flip, rotate methods, crop
+
+
+screen api 
+- draw rect (w/ transparency)
+- draw circle 
+- get pixel at location
+- draw ellipse 
+- copy from MineOS 
+
+image masking - graphics object!
+
+scren optimize with fill and rectangle finding
+- try to fill with curernt bg color first then try others
+- if entire buffer is filled then fill bg with most prominent color
+    - if bg and fg count > some number then set background 
+- vertical drawing
+
+
+screen if fails to fill then dont update buffer
+- copy - check bounds and shit 
+- same for fill
+
+
+geo-explorer program - hologram / keys to move around
+
+
+
+audio drones
+    https://oc.cil.li/topic/1758-noteblock-studio-player-for-computronics-sound-cards/
+
+music http://packages.noahtg.com/pianoNotesArray.php
+
+
+bug - 16 color images are borked
+
+3d print building things
+- 3D printer print
+
+draconic reactor controller 
+- https://tenyx.de/draconic_control/advanced.html#simulator
+- https://tenyx.de/draconic_control/
+- https://pastebin.com/WduATMTF (https://oc.cil.li/topic/1310-draconic-reactor-emulator/)
+
+IC2 reactor controller
