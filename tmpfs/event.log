@@ -1,10 +1,111 @@
-boot/91_gpu.lua:16: attempt to index global 'api' (a nil value)
-boot/91_gpu.lua:16: attempt to index global 'api' (a nil value)
+process library exception handler crashed: /lib/tamamo/screen.lua:277: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:277: attempt to concatenate local 'color' (a nil value)
+process library exception handler crashed: /lib/tamamo/screen.lua:51: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:277: attempt to call global 'getBackground' (a nil value)
+process library exception handler crashed: /lib/tamamo/screen.lua:291: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:52: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:319: attempt to get length of local 'string' (a nil value)
+process library exception handler crashed: /lib/tamamo/screen.lua:279: attempt to compare nil with number
+process library exception handler crashed: /lib/tamamo/screen.lua:279: attempt to compare nil with number
+process library exception handler crashed: error in error handling
+process library exception handler crashed: error in error handling
+process library exception handler crashed: error in error handling
 process library exception handler crashed: invalid palette index
-process library exception handler crashed: invalid palette index
-process library exception handler crashed: invalid palette index
-process library exception handler crashed: /lib/tamamo/screen.lua:231: attempt to compare nil with number
-process library exception handler crashed: /lib/tamamo/screen.lua:231: attempt to compare nil with number
-process library exception handler crashed: /lib/tamamo/screen.lua:241: attempt to compare nil with number
-process library exception handler crashed: invalid palette index
-process library exception handler crashed: invalid palette index
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:210: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /lib/tamamo/screen.lua:216: table index is nil
+process library exception handler crashed: /system/lib/screen.lua:60: attempt to compare nil with number
+[thread] /system/lib/screen.lua:511: attempt to get length of local 'symbol' (a number value)
+[thread] /system/lib/screen.lua:511: attempt to get length of local 'symbol' (a number value)
+[thread] /system/interface.lua:8: TEST
+[thread] /system/lib/screen.lua:511: attempt to get length of local 'symbol' (a number value)
+[thread] /system/lib/screen.lua:511: attempt to get length of local 'symbol' (a number value)
+[thread] /system/lib/screen.lua:511: attempt to get length of local 'symbol' (a number value)
+[thread] /system/lib/screen.lua:546: attempt to get length of local 'string' (a number value)
+[thread] /system/lib/screen.lua:53: attempt to compare boolean with number
+[thread] /system/lib/screen.lua:53: attempt to compare boolean with number
+[thread] /system/lib/screen.lua:53: attempt to compare boolean with number
+[thread] /system/lib/screen.lua:53: attempt to compare boolean with number
+[thread] /system/lib/screen.lua:53: attempt to compare boolean with number
+[thread] /system/lib/screen.lua:464: AH
+[thread] /system/lib/screen.lua:464: AH118, 1
+[thread] /system/lib/screen.lua:89: attempt to compare nil with number
+[thread] /system/lib/screen.lua:86: attempt to compare nil with number
+[thread] /system/lib/screen.lua:81: attempt to compare nil with number
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] bad argument #1 (string expected, got nil)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+process library exception handler crashed: /system/lib/screen.lua:393: attempt to call global 'getRaw' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)

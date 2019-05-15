@@ -6,10 +6,8 @@ local compression = require("compression")
 local screen = require("screen")
 local color = require("color")
 
-local gpu = component.gpu
-
 -- Color API --
-local preset_palette = color.preset_palette
+local getPresetPalette = color.getPresetPalette
 local rgb = color.toHexFromRGB
 
 -- Optimization for lua
@@ -22,16 +20,13 @@ local bor = bit32.bor
 local bxor = bit32.bxor
 local lshift = bit32.lshift
 
-local setBackground = gpu.setBackground
-local setForeground = gpu.setForeground
-local set = gpu.set
-local gw, gh = gpu.maxResolution()
+local setChar = screen.setChar
+local setPaletteColor = component.gpu.setPaletteColor
 
--- Populate index of braille characterss
-local braille = {}
-for i = 0, 255 do
-  braille[i + 1] = uchar(bor(0x2800, i))
-end
+-- Populate index of braille characters
+-- (Feature removed to save RAM)
+-- local braille = {}
+-- for i = 0, 255 do braille[i + 1] = uchar(bor(0x2800, i)) end
 
 -- Final API
 local api = {}
@@ -43,7 +38,7 @@ local function getcolor(val, palette_size)
   if val < palette_size then
     return {val, true}
   end
-  return {preset_palette[val - palette_size + 1], false}
+  return {getPresetPalette(val - 14), false} -- {preset_palette[val - 14], false}
 end
 
 -- HDG Image class
@@ -74,6 +69,10 @@ function HDGImage:prepare()   -- Analyze the raw image data into data arrays
   self.h = self:r8()
   self.palette_size = self:r8()
 
+  -- Alias
+  self.width = self.w
+  self.height = self.h
+
   -- Populate palette
   self.palette = {}
   for i = 1, self.palette_size do
@@ -91,19 +90,23 @@ function HDGImage:prepare()   -- Analyze the raw image data into data arrays
 end 
 
 function HDGImage:draw(x, y)
+  -- Verify not unloaded
+  if self.palette == nil and self.bg == nil then
+    error("Attempting to draw an unloaded image object!")
+  end
+
   x, y = x or 1, y or 1
   x, y = math.floor(x), math.floor(y)
 
   -- Populate global palette
   for i = 1, self.palette_size do
-    gpu.setPaletteColor(i - 1, self.palette[i])
+    setPaletteColor(i - 1, self.palette[i])
   end
 
   -- Keep original colors
-  local bgi = gpu.getBackground()
-  local fgi = gpu.getForeground()
-
-  local bg, fg = nil, nil
+  local bgi = screen.getBackground()
+  local fgi = screen.getForeground()
+  local gw, gh = screen.getResolution()
 
   for i = 1, self.w * self.h do 
     local x1 = math.floor((i - 1) % self.w) + x
@@ -117,19 +120,23 @@ function HDGImage:draw(x, y)
     local a = getcolor(self.bg[i], self.palette_size)
     local b = getcolor(self.fg[i], self.palette_size)
 
-    screen.setChar(x1, y1, b[1], a[1], braille[1 + self.sym[i]], b[2], a[2])
+    setChar(x1, y1, b[1], a[1], uchar(bor(0x2800, self.sym[i])), b[2], a[2]) -- braille[1 + self.sym[i]]
     ::continue::
   end
 
   screen.update()
 
   -- Reset to original colors
-  setBackground(bgi)
-  setForeground(fgi)
+  screen.setBackground(bgi)
+  screen.setForeground(fgi)
 end
 
-function HDGImage:reset()     -- Read the index
-  self.indx = 1
+function HDGImage:unload()
+  self.data = nil
+  self.palette = nil
+  self.fg = nil
+  self.bg = nil
+  self.sym = nil
 end
 
 -- Helper function, decompresses a string
@@ -176,6 +183,9 @@ end
 -- can be displayed to the screen
 function api.loadHDG(path)
   local data = io.open(path, "rb")
+  if path == nil then error("Image path is nil") end
+  if not data then error(path .. " could not be loaded") end
+
   local header = data:read(3)
 
   -- Verify header

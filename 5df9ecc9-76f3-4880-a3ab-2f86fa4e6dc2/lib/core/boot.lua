@@ -67,6 +67,8 @@ local set = gpu.set
 -- Display a status message (Optionally at a y value)
 -- This message will be centered
 local function status(msg, y)
+  if not gpu or not screen then return end
+
   y = y or h * 3 / 4 - 1
   if gpu and screen then
     setBackground(0x000000)
@@ -163,8 +165,8 @@ local function rom_invoke(method, ...)
 end
 
 local scripts = {}
-for _, file in ipairs(rom_invoke("list", "boot")) do
-  local path = "boot/" .. file
+for _, file in ipairs(rom_invoke("list", "/system/boot")) do
+  local path = "/system/boot/" .. file
   if not rom_invoke("isDirectory", path) then
     table.insert(scripts, path)
   end
@@ -179,10 +181,10 @@ end
 -- Draw boot screen logo --
 if gpu and screen then
   local image = require("image")
-  local i = image.loadHDG("/system/boot/boot-logo.hdg")
+  local i = image.loadHDG("/system/assets/boot-logo.hdg")
 
   -- We want image above the loading screen and centered
-  i:draw(mid - i.w / 2, h * 3 / 4 - 8 - i.h)
+  i:draw(mid - i.width / 2, h * 3 / 4 - 8 - i.height)
 end
 
 -- Load connected components --

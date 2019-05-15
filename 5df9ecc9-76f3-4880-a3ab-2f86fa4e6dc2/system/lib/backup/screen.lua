@@ -21,6 +21,7 @@ local currentBg, currentFg = 0, 0xFFFFFF
 -- Optimization for lua / gpu proxying
 local gpuProxy, fill, set, setBackground, setForeground
 local getResolution, setResolution, getPaletteColor, copy, setResolution
+local getBackground, getForeground
 
 local rep = string.rep
 local sub = unicode.sub
@@ -28,6 +29,7 @@ local floor = math.floor
 
 -- Constants
 local fillIfAreaIsGreaterThan = 40
+local setToFillRatio = 2 -- Ratio of max set() calls / fill() calls per tick, defined in card
 
 -- Convert x y coords to a buffer index
 local function getIndex(x, y)
@@ -41,7 +43,7 @@ end
 local function areEqual(sym, changesym, bg, changebg, fg, changefg)
   -- If symbols don't match or backgrounds match always unequal
   if sym ~= changesym or bg ~= changebg then return false end
-  if sym == " " then return true end
+  if sym == " " or sym == "⠀" then return true end -- 2nd is unicode 0x2800, not regular space
   return fg == changefg
 end
 
@@ -68,6 +70,7 @@ function api.setGPUProxy(gpu)
   gpuProxy = gpu
   fill, set, copy = gpu.fill, gpu.set, gpu.copy
   setBackground, setForeground = gpu.setBackground, gpu.setForeground
+  getBackground, getForeground = gpu.getBackground, gpu.getForeground
   getResolution, setResolution = gpu.getResolution, gpu.setResolution
   getPaletteColor = gpu.getPaletteColor
 
@@ -87,8 +90,13 @@ function api.getGPUProxy()
 end
 
 -- Bind the gpu proxy to a screen address --
-function api.bind(screenAddress)
-  return gpuProxy.bind(screenAddress)
+function api.bind(screenAddress, reset)
+  local success, reason = gpuProxy.bind(address, reset)
+	if success then
+		if reset then api.setResolution(gpuProxy.maxResolution())
+    else api.setResolution(bufferWidth, bufferHeight) end
+  end
+  return success, reason
 end
 
 -- Flush the buffer and re-create each array --
@@ -102,12 +110,15 @@ function api.flush(w, h)
   drawX1, drawX2 = w, 0
   drawY1, drawY2 = h, 0
 
+  -- currentBg = 0
+  -- currentFg = 0xFFFFFF
+
   buffBg, buffFg, buffSym = {}, {}, {}
   changeBg, changeFg, changeSym = {}, {}, {}
 
   -- Prefill the buffers to avoid rehashing (-17 is transparent) --
   for i = 1, w * h do
-    buffBg[i], buffFg[i], buffSym[i] = -17, -17, " "
+    buffBg[i], buffFg[i], buffSym[i] = 0, 0, " "
     changeBg[i], changeFg[i], changeSym[i] = -17, -17, " "
   end
 end
@@ -115,7 +126,7 @@ end
 -- Clear the screen by filling with black whitespace chars --
 function api.clear(color)
   api.setBackground(color)
-  api.fill(0, 0, bufferWidth, bufferHeight, " ")
+  api.fill(0, 0, buffWidth, buffHeight, " ")
 
   drawX1, drawX2 = w, 0
   drawY1, drawY2 = h, 0
@@ -140,15 +151,21 @@ function api.setChar(x, y, fgColor, bgColor, symbol, isPalette1, isPalette2)
   changeBg[i], changeFg[i], changeSym[i] = bgColor, fgColor, symbol
 end
 
+
 -- Write changes to the screen
 function api.update(force)
+   -- Force update all bounds
+  if force then
+    drawX1, drawY1, drawX2, drawY2 = 1, 1, buffWidth, buffHeight
+  end
+
   -- If there have been no changes then ignore
   if drawX1 > drawX2 or drawY1 > drawY2 then return end
 
   -- i = current index
   -- lineChange = index increment when changing to next y value
   -- fillw = Width of repeated length of background colors
-  -- subgroup = the foregorund subgroup of the background dict
+  -- subgroup = the foreground subgroup of the background dict
   -- searchX = x value of end of repeated length
   -- searchIndex = index of end of repeated length
   -- currBg = temp var to store bg for current index since change buffer gets reset
@@ -156,16 +173,18 @@ function api.update(force)
   -- j = temp loop variable
   -- colorChanges = dict of bg / fg color pixels grouped togther
   -- transparentChange = variable to track if any change vector is transparent
+  -- noEmptySpaces = variable to track if there are not any empty spaces (no foreground chars)
   local i = getIndex(drawX1, drawY1)
   local lineChange = buffWidth - drawX2 + drawX1 - 1
   local fillw, subgroup, searchX, searchIndex, currBg, charcount, j
   local colorChanges = {}
+  local aFgValue = nil
 
   for y = drawY1, drawY2 do
 		x = drawX1
     while x <= drawX2 do
       if changeBg[i] == -17 or changeFg[i] == -17 then
-        -- Ignore transparent characters
+      -- Ignore transparent characters
       -- If char is same as buffer below don't update it
       -- unless the force parameter is true.
       elseif force or not areEqual(buffSym[i], changeSym[i], buffBg[i], changeBg[i], buffFg[i], changeFg[i]) then
@@ -173,6 +192,16 @@ function api.update(force)
         searchIndex = i + 1
         
         buffSym[i], buffBg[i], buffFg[i] = changeSym[i], changeBg[i], changeFg[i]
+
+        -- Spaces don't need a foreground, assign filler value (black foreground)
+        -- First space below is unicode char 0x2800 (not a regular space)
+        if buffSym[i] == "⠀"  or buffSym[i] == " " then
+          -- All "space" chars don't render a foreground color, so
+          -- we set them all equal to 1 foreground to minimize redundant
+          -- setForeground() calls
+          if aFgValue ~= nil then aFgValue = buffFg[i] end
+          buffFg[i] = aFgValue
+        end 
 
         -- Search for repeating chunks of characters of the same
         -- background
@@ -210,9 +239,12 @@ function api.update(force)
               break
             end
             charcount = charcount + 1
-          end
 
-          subgroup[#subgroup + 1] = {x + j - i, y, rep(changeSym[j], charcount)}
+            -- Change buffer reset
+            -- changeBg[k], changeFg[k], changeSym[k] = -17, -17, " "
+          end
+          
+          subgroup[#subgroup + 1] = {x + j - i, y, changeSym[j], charcount}
 
           -- Reset the change buffer
           changeBg[j], changeFg[j] = -17, -17
@@ -227,6 +259,8 @@ function api.update(force)
         i = i + fillw - 1
       end
 
+      ::renderoptimizationend::
+
       -- This is required to avoid infinite loops
       -- when buffers are the same
       x = x + 1
@@ -238,20 +272,39 @@ function api.update(force)
 
   -- Draw color groups
   local t -- Temp variable
+  local setCounter = 0
+  local fillCounter = 1
+
   for bgcolor, group1 in pairs(colorChanges) do
     setBackground(absColor(bgcolor), bgcolor < 0)
     for fgcolor, group2 in pairs(group1) do
-      setForeground(absColor(fgcolor), fgcolor < 0)
+      if fgcolor == -17 then
+        -- There is 1 case where we can skip this, where there is only spaces so no foreground is needed
+      else setForeground(absColor(fgcolor), fgcolor < 0) end 
 
       for i = 1, #group2 do
         t = group2[i]
 
-        -- If spaces then use fill as it is less energy intensive
-        if t[3] == " " and #t[3] > 1 then
-          fill(t[1], t[2], #t[3], 1, " ")
-        else 
-          set(t[1], t[2], t[3]) 
+        if t[3] == "⠀" or t[3] == " " then -- First is braille 0x2800
+          -- If spaces then use fill as it is less energy intensive
+          if t[4] > 1 then
+            fill(t[1], t[2], t[4], 1, " ")
+            fillCounter = fillCounter + 1
+            goto continue
+          end
         end
+
+        -- Use fill or set depending on setToFillRatio to try to max out
+        -- free gpu calls before they are queued to next tick
+        if setCounter <= fillCounter * setToFillRatio then
+          set(t[1], t[2], rep(t[3], t[4]))
+          setCounter = setCounter + 1
+        else 
+          fill(t[1], t[2], t[4], 1, t[3]) 
+          fillCounter = fillCounter + 1
+        end
+
+        ::continue::
       end
     end
   end
@@ -259,7 +312,6 @@ function api.update(force)
   -- Reset the drawX drawY bounds to largest / smallest possible
   drawX1, drawX2 = buffWidth, 0
   drawY1, drawY2 = buffHeight, 0 
-  colorChanges = nil
 end
 
 
@@ -308,30 +360,52 @@ function api.set(x, y, string, vertical, dontUpdate)
   if not dontUpdate then api.update() end
 end
 
-function api.copy(x, y, w, h, tx, ty, dontUpdate)
+-- Copy a region by a displacement tx and ty
+-- Note that this directly updates to screen, as it is more
+-- efficent to directly do the copy call
+function api.copy(x, y, w, h, tx, ty)
+  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
+  if x < 1 or y < 1 or x > buffWidth or y > buffHeight then return false end
+  if w < 1 or h < 1 or w > buffWidth or h > buffHeight then return false end
   local i
-  local orgB, orgF = currentBg, currentFg
 
-  for dx = 0, w - 1 do
-    for dy = 0, h - 1 do
-      api.setBackground(buffBg[i])
-      api.setForeground(buffFg[i])
-      api.set(tx + dx, ty + dy, buffSym[i], false, true)
+  -- Literally just call copy() since it's 1 GPU call
+  -- and the buffer's already properly updated
+  api.update() -- Update current change buffer
+  copy(x, y, w, h, tx, ty) 
+
+  -- Update background BG buffer to match reality
+  local boundX1, boundX2, xinc, boundY1, boundY2, yinc
+  boundX1, boundX2, xinc = x, x + w - 1, 1
+  boundY1, boundY2, yinc = y, y + h - 1, 1
+  if tx > 0 then
+    boundX1, boundX2, xinc = boundX2, boundX1, -1
+  end
+  if ty > 0 then
+    boundY1, boundY2, yinc = boundY2, boundY1, -1
+  end
+   
+  for y1 = boundY1, boundY2, yinc do
+    for x1 = boundX1, boundX2, xinc do
+      if y1 > buffHeight or y1 + ty > buffHeight then goto loopend end
+      if x1 < 1 or x1 > buffWidth or y1 < 1 then goto continue end
+      if x1 + tx < 1 or x1 + tx > buffWidth or y1 + ty < 1 then goto continue end
+
+      i = getIndex(x1, y1)
+      buffBg[i], buffFg[i], buffSym[i] = api.getRaw(x1, y1)
+
+      ::continue::
     end
   end
-
-  currentBg = orgB
-  currentFg = orgF
-  if not dontUpdate then api.update() end
+  ::loopend::
 end 
 
 function api.fill(x, y, w, h, symbol, dontUpdate)
+  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
+  
   if #symbol ~= 1 then return false end
   if x < 1 or y < 1 or x > buffWidth or y > buffHeight then return false end
   if w < 1 or h < 1 or w > buffWidth or h > buffHeight then return false end
-
-  -- Round x and y values down automagically
-  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
 
   -- Directly fill if area is large enough
   local useGpuFill = fillIfAreaIsGreaterThan <= w * h
@@ -383,9 +457,31 @@ function api.getHeight()
 end
 
 -- Raw get for buffer values
-function api.getRaw(x, y)
+function api.getRaw(x, y, dontNormalize)
   local index = getIndex(x, y)
+
+  if changeBg[index] ~= -17 and changeFg[index] ~= -17 then
+    if dontNormalize then return changeBg[index], changeFg[index], changeSym[index] end
+    return normalizeColor(changeBg[index]), normalizeColor(changeFg[index]), changeSym[index]
+  end
+
+  if dontNormalize then return buffBg[index], buffFg[index], buffSym[index] end
   return normalizeColor(buffBg[index]), normalizeColor(buffFg[index]), buffSym[index]
+end
+
+-- Raw method to set current background
+-- to adapt to the background of x, y and
+-- current foreground to blend
+-- Optionally, blendBg can be set to false to
+-- not use adapative background
+function api.setAdaptive(x, y, cfg, cbg, transparency, blendBg, blendBgTransparency)
+  bg, fg, sym = api.getRaw(x, y)
+
+  if blendBg then
+    if blendBgTransparency then api.setBackground(color.blend(bg, cbg, transparency))
+    else api.setBackground(color.getProminentColor(fg, bg, sym)) end
+  end
+  api.setForeground(color.blend(fg, cfg, transparency))
 end
 
 
@@ -395,10 +491,20 @@ end
 -- with optional transparency
 function api.drawRect(x, y, w, h, symbol, transparency)
   if #symbol ~= 1 then return false end
+  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > buffWidth or y > buffHeight then return false end
 
-  -- TODO just add the frame thing like open OS does
+  local currentFgSave, currentBgSave = currentFg, currentBg
+  local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
 
+  -- Corners
+  api.set(x, y, " ")
+
+  -- Lines
+
+  -- Reset original bg / fg colors
+  currentBg = currentBgSave
+  currentFg = currentFgSave
   return true
 end
 
@@ -407,34 +513,54 @@ end
 -- we have to reimplement fill code
 function api.fillRect(x, y, w, h, symbol, transparency)
   if #symbol ~= 1 then return false end
+  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > buffWidth or y > buffHeight then return false end
 
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
 
-  -- Round x and y values down automagically
-  x, y, w, h = floor(x), floor(y), floor(w), floor(h)
-
   -- Directly fill if area is large enough
   for x1 = x, x + w - 1 do
   for y1 = y, y + h - 1 do
-    if x1 > bufferWidth or y1 > bufferHeight then goto continue end
-
-    bg, fg, _ = api.getRaw(x1, y1)
-    api.setBackground(color.blend(bg, cbg, transparency))
-    api.setForeground(color.blend(fg, cfg, transparency))
+    if x1 > buffWidth then goto continue end
+    if y1 > buffHeight then break end
+    api.setAdaptive(x1, y1, cfg, cbg, transparency, true, true)
     api.set(x1, y1, symbol, false, true)
 
     ::continue::
   end end
 
   -- Reset original bg / fg colors
-  api.setBackground(currentBgSave)
-  api.setForeground(currentFgSave)
+  currentBg = currentBgSave
+  currentFg = currentFgSave
   return true
 end
 
-function api.drawText()
+-- Draw a string at the location (Straight line, newlines ignore)
+-- If transparency is enabled, foreground is blended w/ bg
+-- If blendBg is enabled, the background will be selected to try
+-- to camouflage itself with the existing buffer
+function api.drawText(x, y, string, transparency, blendBg)
+  x, y = floor(x), floor(y)
+
+  -- Save current colors
+  local currentFgSave, currentBgSave = currentFg, currentBg
+  local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
+
+  for dx = 0, #string - 1 do
+    if x < 1 then goto continue end
+    if x > buffWidth then break end
+
+    api.setAdaptive(x + dx, y, cfg, false, transparency, blendBg, false)
+    api.set(x + dx, y, sub(string, dx + 1, dx + 1))
+
+    ::continue::
+  end
+
+  -- Reset original bg / fg colors
+  currentBg = currentBgSave
+  currentFg = currentFgSave
+  return true
 end
 
 function api.drawEllipse()
@@ -445,23 +571,24 @@ end
 
 -- Draw a line (Using braille characters)
 -- from 1 point to another, optionally with transparency
-function api.drawLine(x1, y1, x2, y2, transparency)
+-- Optional line character, which will override ALL line characters
+function api.drawLine(x1, y1, x2, y2, transparency, lineChar)
   x1, y1, x2, y2 = floor(x1), floor(y1), floor(x2), floor(y2)
 
   -- Save current colors
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
+  local lineChar
 
   -- Horz line
   if y1 == y2 then
+    lineChar = lineChar or "▔"
     for x = x1, x2 do
       if x < 1 then goto continue end
       if x > buffWidth then break end
 
-      bg, fg, sym = api.getRaw(x, y1)
-      api.setBackground(color.getProminentColor(fg, bg, sym))
-      api.setForeground(color.blend(bg, cfg, transparency))
-      api.set(x, y1, "▔", false, true)
+      api.setAdaptive(x, y1, cfg, false, transparency, true, false)
+      api.set(x, y1, lineChar, false, true)
 
       ::continue::
     end
@@ -470,23 +597,24 @@ function api.drawLine(x1, y1, x2, y2, transparency)
 
   -- Vertical line
   if x1 == x2 then
+    lineChar = lineChar or "▏"
     for y = y1, y2 do
       if y < 1 then goto continue end
       if y > buffHeight then break end
 
-      bg, fg, sym = api.getRaw(x1, y)
-      api.setBackground(color.getProminentColor(fg, bg, sym))
-      api.setForeground(color.blend(bg, cfg, transparency))
-      api.set(x1, y, "▏", false, true)
+      api.setAdaptive(x1, y, cfg, false, transparency, true, false)
+      api.set(x1, y, lineChar, false, true)
 
       ::continue::
     end
     return true
   end
 
+  -- TODO LINE
+
   -- Reset original bg / fg colors
-  api.setBackground(currentBgSave)
-  api.setForeground(currentFgSave)
+  currentBg = currentBgSave
+  currentFg = currentFgSave
   return true
 end
 

@@ -26,7 +26,7 @@ function process.load(path, env, init, name)
   checkArg(3, init, "function", "nil")
   checkArg(4, name, "string", "nil")
 
-  assert(type(path) == "string" or env == nil, "process cannot load function environemnts")
+  assert(type(path) == "string" or env == nil, "process cannot load function enviroments")
 
   local p = process.findProcess()
   env = env or p.env

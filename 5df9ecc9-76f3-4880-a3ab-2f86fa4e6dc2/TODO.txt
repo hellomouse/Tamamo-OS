@@ -28,39 +28,100 @@ Boot options
 - Shutdown
 - Back 
 
-hashlib
+https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
+https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
+
+gui idea 
+- gui divs, keep elements inside from rendering out of bounds, iwht scroll 
+- div:addChild add element
+- buttons and shit 
+- tab class - handles events
+
+SCREEN: current drawing bounds, if enabled then shit like copy() and fill won't set
+if outside of bounds
+
+System
+- Drivers for sound and shit, which can be interfaced instead of with direct component 
+- Better component API 
+- File mounts to drives
+
+debug: https://github.com/OpenPrograms/EvaKnievel-Programs/blob/master/logger/boot/04_logger.lua
+save logs in /var/log
+
+
+
+hashlib - like base64, optional
 
 install from compressed archive
 
 image lib
 - flip, rotate methods, crop
 
+make base64 lib optional
+
+optimize wiht https://oc.cil.li/topic/243-memory-management/
+
+
+gui
+- file browser 
+- popup
+-palette selector 
+- component selector
+
 
 screen api 
-- draw rect (w/ transparency)
-- draw circle 
 - get pixel at location
-- draw ellipse 
-- copy from MineOS 
+- copy from MineOS
+
+
+semipixel ellipse, semipixel curve
+regular line
+
 
 image masking - graphics object!
 
+
+
+screensaver: https://chrome.google.com/webstore/detail/lagom/kmklifknlepgmbbigahhphncmgkppbjb?hl=en
+
+
 scren optimize with fill and rectangle finding
 - try to fill with curernt bg color first then try others
-- if entire buffer is filled then fill bg with most prominent color
-    - if bg and fg count > some number then set background 
 - vertical drawing
 
-optimize continues in fill - if y then break if x then goto next y
 
-screen if fails to fill then dont update buffer
-- copy - check bounds and shit 
-- same for fill
+https://www.zerochan.net/1727073 - izuna citation
 
+
+boot logo solid color?
+
+
+make boot work only if there is a gpu
+ - organize boot sequence code!
+
+
+
+drawLimits 
+
+instead of sorting by color with table use fancy shit
+- save changes in the changes buffer - for first 128 indexes add to w * h for color storage
+- then switch to used indexes
+- have the things reference each other
+
+
+terminal backgrounds!
+
+
+
+
+write tests
+
+- component browser
+https://oc.cil.li/topic/835-cmb-component-methods-browser/
 
 geo-explorer program - hologram / keys to move around
 
-
+-videos - https://git.asie.pl/asie-minecraft/Nadeshicodec
 
 audio drones
     https://oc.cil.li/topic/1758-noteblock-studio-player-for-computronics-sound-cards/
@@ -68,7 +129,10 @@ audio drones
 music http://packages.noahtg.com/pianoNotesArray.php
 
 
-bug - 16 color images are borked
+https://github.com/OpenPrograms/Wuerfel_21-OC-Toolkit
+https://oc.cil.li/topic/116-wuerfel_21s-oc-toolkit-everything-and-more/
+https://github.com/IgorTimofeev/MineOS/blob/5b2e4b2a11bb2c1d2831e7e07c444ccf80b66b56/Applications/Settings.app/Modules/0_Screen/Main.lua
+
 
 3d print building things
 - 3D printer print
@@ -77,5 +141,7 @@ draconic reactor controller
 - https://tenyx.de/draconic_control/advanced.html#simulator
 - https://tenyx.de/draconic_control/
 - https://pastebin.com/WduATMTF (https://oc.cil.li/topic/1310-draconic-reactor-emulator/)
+
+instruction program - write instructions
 
 IC2 reactor controller
