@@ -179,9 +179,10 @@ for i = 1, #scripts do
 end
 
 -- Draw boot screen logo --
+local i
 if gpu and screen then
   local image = require("image")
-  local i = image.loadHDG("/system/assets/boot-logo.hdg")
+  i = image.loadHDG("/system/assets/boot-logo.hdg")
 
   -- We want image above the loading screen and centered
   i:draw(mid - i.width / 2, h * 3 / 4 - 8 - i.height)
@@ -201,3 +202,4 @@ progressbar(1.0)
 computer.pushSignal("init") -- so libs know components are initialized.
 require("event").pull(1, "init") -- Allow init processing.
 _G.runlevel = 1
+

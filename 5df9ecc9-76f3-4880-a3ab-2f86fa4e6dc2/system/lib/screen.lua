@@ -23,15 +23,15 @@ local currentBg, currentFg = 0, 0xFFFFFF
 
 -- Optimization for lua / gpu proxying
 local gpuProxy, GPUfill, GPUset, GPUsetBackground, GPUsetForeground
-local GPUgetResolution, GPUsetResolution, GPUgetPaletteColor, GPUcopy, GPUsetResolution
+local GPUgetResolution, GPUsetResolution, GPUgetPaletteColor, GPUcopy, GPUsetResolution, GPUsetPaletteColor
 local GPUgetBackground, GPUgetForeground
 
 local rep = string.rep
 local sub = unicode.sub
 local floor = math.floor
 local len = unicode.len
-
 local min = math.min
+local max = math.max
 
 -- Constants
 local fillIfAreaIsGreaterThan = 40
@@ -71,7 +71,13 @@ end
 
 -- Set the drawing bounds. If useCurrent is true it will take the min
 -- of the current bound and the updated bound
-function setDrawingBound(x1, y1, x2, y2, useCurrent)
+local function setDrawingBound(x1, y1, x2, y2, useCurrent)
+  -- If no arguments are passed reset to full screen
+  if x1 == nil then
+    drawX1, drawY1, drawX2, drawY2 = 1, 1, bufferWidth, bufferHeight
+    return
+  end
+
   checkArg(1, x1, "number")
   checkArg(2, y1, "number")
   checkArg(3, x2, "number")
@@ -107,6 +113,11 @@ function setDrawingBound(x1, y1, x2, y2, useCurrent)
   end
 end
 
+-- Getter for drawing bounds
+local function getDrawingBound()
+  return drawX1, drawY1, drawX2, drawY2
+end
+
 -- Set GPU Proxy for the screen --
 function setGPUProxy(gpu)
   -- Define local variables
@@ -116,6 +127,7 @@ function setGPUProxy(gpu)
   GPUgetBackground, GPUgetForeground = gpu.getBackground, gpu.getForeground
   GPUgetResolution, GPUsetResolution = gpu.getResolution, gpu.setResolution
   GPUgetPaletteColor = gpu.getPaletteColor
+  GPUsetPaletteColor = gpu.setPaletteColor
 
   -- Override GPU API
   gpu.set, gpu.copy, gpu.fill = set, copy, fill
@@ -167,6 +179,26 @@ function flush(w, h)
   end
 end
 
+-- Reset the palette to OpenOS defaults
+function resetPalette()
+  GPUsetPaletteColor(0, 0x0F0F0F)
+  GPUsetPaletteColor(1, 0x1E1E1E)
+  GPUsetPaletteColor(2, 0x2D2D2D)
+  GPUsetPaletteColor(3, 0x3C3C3C)
+  GPUsetPaletteColor(4, 0x4B4B4B)
+  GPUsetPaletteColor(5, 0x5A5A5A)
+  GPUsetPaletteColor(6, 0x696969)
+  GPUsetPaletteColor(7, 0x787878)
+  GPUsetPaletteColor(8, 0x878787)
+  GPUsetPaletteColor(9, 0x969696)
+  GPUsetPaletteColor(10, 0xA5A5A5)
+  GPUsetPaletteColor(11, 0xB4B4B4)
+  GPUsetPaletteColor(12, 0xC3C3C3)
+  GPUsetPaletteColor(13, 0xD2D2D2)
+  GPUsetPaletteColor(14, 0xE1E1E1)
+  GPUsetPaletteColor(15, 0xF0F0F0)
+end
+
 -- Clear the screen by filling with black whitespace chars --
 function clear(color)
   if color == nil then color = 0x0 end
@@ -184,13 +216,9 @@ function setChar(x, y, fgColor, bgColor, symbol, isPalette1, isPalette2)
   if x < drawX1 or x > drawX2 or y < drawY1 or y > drawY2 then return false end
   if len(symbol) ~= 1 then return false end
 
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, fgColor, "number")
-  checkArg(4, bgColor, "number")
-  checkArg(5, symbol, "string")
-  checkArg(6, isPalette1, "boolean")
-  checkArg(7, isPalette2, "boolean")
+  -- Don't check arg types in this function as this function is used A LOT
+  -- internally and checking args actually slows down a full screen render
+  -- by up to 100 ms
 
   local i = getIndex(x, y)
 
@@ -451,12 +479,21 @@ function copy(x, y, w, h, tx, ty)
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
   if w < 1 or h < 1 or w > bufferWidth or h > bufferHeight then return false end
-  local i
+  local canDirectlyCopy = true 
+  local bg, fg, sym, i
+
+  -- We can't use gpu copy directly though if it exceeds the current bounds
+  if tx < drawX1 or tx + w - 1 < drawX1 or ty < drawY1 or ty + h - 1 < drawY1 or
+     tx > drawX2 or tx + w - 1 > drawX2 or ty > drawY2 or ty + h - 1 > drawY2 then
+    canDirectlyCopy = false
+  end
 
   -- Literally just call copy() since it's 1 GPU call
   -- and the buffer's already properly updated
-  update() -- Update current change buffer
-  GPUcopy(x, y, w, h, tx, ty) 
+  if canDirectlyCopy then
+    update() -- Update current change buffer
+    GPUcopy(x, y, w, h, tx, ty) 
+  end
 
   -- Update background BG buffer to match reality
   local boundX1, boundX2, xinc, boundY1, boundY2, yinc
@@ -475,8 +512,15 @@ function copy(x, y, w, h, tx, ty)
       if x1 < 1 or x1 > bufferWidth or y1 < 1 then goto continue end
       if x1 + tx < 1 or x1 + tx > bufferWidth or y1 + ty < 1 then goto continue end
 
-      i = getIndex(x1 + tx, y1 + ty)
-      buffBg[i], buffFg[i], buffSym[i] = getRaw(x1, y1)
+      bg, fg, sym = getRaw(x1, y1)
+      if canDirectlyCopy then
+        i = getIndex(x1 + tx, y1 + ty)
+        buffBg[i], buffFg[i], buffSym[i] = bg, fg, sym
+      else
+        setBackground(bg)
+        setForeground(fg)
+        set(x1 + tx, y1 + ty, sym, false, true)
+      end
 
       ::continue::
     end
@@ -497,9 +541,15 @@ function fill(x, y, w, h, symbol, dontUpdate)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
   if w < 1 or h < 1 or w > bufferWidth or h > bufferHeight then return false end
 
-  -- Directly fill if area is large enough
-  local useGpuFill = fillIfAreaIsGreaterThan <= w * h
+  -- Directly fill if area is large enough and we're directly updating
+  local useGpuFill = fillIfAreaIsGreaterThan <= w * h and not dontUpdate
   local i
+
+  -- We can't use gpu fill directly though if it exceeds the current bounds
+  if x < drawX1 or x + w - 1 < drawX1 or y < drawY1 or y + h - 1 < drawY1 or
+     x > drawX2 or x + w - 1 > drawX2 or y > drawY2 or y + h - 1 > drawY2 then
+    useGpuFill = false
+  end
 
   for x1 = x, x + w - 1 do
     for y1 = y, y + h - 1 do
@@ -513,7 +563,7 @@ function fill(x, y, w, h, symbol, dontUpdate)
     end
   end
   
-  if useGpuFill and not dontUpdate then
+  if useGpuFill then
     GPUsetBackground(currentBg)
     GPUsetForeground(currentFg)
     GPUfill(x, y, w, h, symbol)
@@ -801,8 +851,6 @@ end
 -- Set gpu proxy
 setGPUProxy(gpu)
 
-setDrawingBound(10, 10, 90, 40)
-
 return {
   setGPUProxy = setGPUProxy,
   getGPUProxy = getGPUProxy,
@@ -828,5 +876,7 @@ return {
   drawEllipseOutline = drawEllipseOutline,
   drawEllipse = drawEllipse,
   drawLineThin = drawLineThin,
-  setDrawingBound = setDrawingBound
+  setDrawingBound = setDrawingBound,
+  getDrawingBound = getDrawingBound,
+  resetPalette = resetPalette
 }

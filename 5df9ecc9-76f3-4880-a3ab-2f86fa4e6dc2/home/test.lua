@@ -18,8 +18,8 @@ local image = require("image")
 local x = image.loadHDG("/system/assets/boot-logo.hdg")
 x:draw(1, 10)
 --
---screen.copy(1, 10, x.w, x.h, 19, 0)
---screen.copy(1, 10, x.w, x.h, 0, -14)
+screen.copy(1, 10, x.w, x.h, 39, 0)
+screen.copy(1, 10, x.w, x.h, 0, -14)
 
 screen.setForeground(0xFFFFFF)
 screen.update()

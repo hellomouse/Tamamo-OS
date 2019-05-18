@@ -28,6 +28,10 @@ Boot options
 - Shutdown
 - Back 
 
+
+TPM - tamamo package manager (thx asdfbot)
+
+
 https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
 https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
 
@@ -36,9 +40,6 @@ gui idea
 - div:addChild add element
 - buttons and shit 
 - tab class - handles events
-
-SCREEN: current drawing bounds, if enabled then shit like copy() and fill won't set
-if outside of bounds
 
 System
 - Drivers for sound and shit, which can be interfaced instead of with direct component 
@@ -91,6 +92,11 @@ scren optimize with fill and rectangle finding
 
 
 https://www.zerochan.net/1727073 - izuna citation
+
+https://oc.cil.li/topic/793-proximity-door-update-v13-nothing-says-style-like-an-automatic-door/
+https://oc.cil.li/topic/1470-mekanism-hud-with-openglasses/
+
+https://oc.cil.li/topic/1415-pseudo-big-font-library/
 
 
 boot logo solid color?

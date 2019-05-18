@@ -137,6 +137,7 @@ function HDGImage:unload()
   self.fg = nil
   self.bg = nil
   self.sym = nil
+  screen.resetPalette()
 end
 
 -- Helper function, decompresses a string

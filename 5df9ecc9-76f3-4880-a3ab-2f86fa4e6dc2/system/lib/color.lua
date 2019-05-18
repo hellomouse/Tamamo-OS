@@ -82,9 +82,29 @@ function api.getProminentColor(fg, bg, symbol)
   return bg -- Educated guess
 end
 
-  -- return api.toHexFromRGB(
-  --   sqrt((1 - amount) * r1 * r1 + amount * r2 * r2),
-  --   sqrt((1 - amount) * g1 * g1 + amount * g2 * g2),
-  --   sqrt((1 - amount) * b1 * b1 + amount * b2 * b2))
+-- Ty MineOS for this transition function
+function api.transition(color1, color2, position)
+  local r1 = color1 / 65536
+  r1 = r1 - r1 % 1
+
+  local g1 = (color1 - r1 * 65536) / 256
+  g1 = g1 - g1 % 1
+
+  local b1 = color1 - r1 * 65536 - g1 * 256
+  local r2 = color2 / 65536
+  r2 = r2 - r2 % 1
+
+  local g2 = (color2 - r2 * 65536) / 256
+  g2 = g2 - g2 % 1
+
+  local r, g, b =
+    r1 + (r2 - r1) * position,
+    g1 + (g2 - g1) * position,
+    b1 + (color2 - r2 * 65536 - g2 * 256 - b1) * position
+  return
+    (r - r % 1) * 65536 +
+    (g - g % 1) * 256 +
+    (b - b % 1)
+end
 
 return api
