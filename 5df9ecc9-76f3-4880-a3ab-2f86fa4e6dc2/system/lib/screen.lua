@@ -741,7 +741,7 @@ function drawText(x, y, string, transparency, blendBg)
     if x < 1 then goto continue end
     if x > bufferWidth then break end
 
-    set(x + dx, y, setAdaptive(x + dx, y, cfg, false, transparency, blendBg, false, sub(string, dx + 1, dx + 1)))
+    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, transparency, blendBg, false, sub(string, dx + 1, dx + 1)))
     ::continue::
   end
 
