@@ -32,6 +32,11 @@ Boot options
 TPM - tamamo package manager (thx asdfbot)
 
 
+Permissions like in android 
+- App would like to access OS GUI container
+- Detect gpu and shit and notify in list
+
+
 https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
 https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
 
@@ -40,6 +45,9 @@ gui idea
 - div:addChild add element
 - buttons and shit 
 - tab class - handles events
+
+button don't draw text out of bounds 
+
 
 System
 - Drivers for sound and shit, which can be interfaced instead of with direct component 

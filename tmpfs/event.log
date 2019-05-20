@@ -109,3 +109,74 @@ process library exception handler crashed: /system/lib/screen.lua:393: attempt t
 [thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
 [thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
 [thread] /system/interface.lua:14: attempt to call field 'fillRect' (a nil value)
+[thread] /home/test3.lua:15: attempt to index global 'event' (a nil value)
+[thread] /home/test3.lua:16: attempt to index global 'event' (a nil value)
+[thread] /home/test3.lua:16: attempt to index global 'event' (a nil value)
+[thread] /home/test3.lua:15: attempt to index global 'event' (a nil value)
+[thread] /home/test3.lua:8: bad argument #2 to 'error' (number expected, got string)
+[thread] /home/test3.lua:8: key_up
+[thread] /home/test3.lua:8: attempt to call global 'unpack' (a nil value)
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:152: attempt to compare number with nil
+[thread] /system/lib/gui.lua:139: attempt to index field 'thread' (a nil value)
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:154: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:151: attempt to compare number with nil
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:125: bad argument #1 (number or nil expected, got table)
+[thread] /system/lib/gui.lua:166: attempt to compare two nil values
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:190: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:162: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:162: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:167: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:167: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:167: attempt to index local 'button' (a nil value)
+[thread] /system/lib/gui.lua:137: attempt to compare number with table
+process library exception handler crashed: attempt to yield across a C-call boundary

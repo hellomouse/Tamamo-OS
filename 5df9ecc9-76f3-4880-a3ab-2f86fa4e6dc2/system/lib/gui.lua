@@ -2,13 +2,37 @@ local screen = require("screen")
 local unicode = require("unicode")
 local thread = require("thread")
 local color = require("color")
+local format = require("format")
 
 -- Returned object
-local GUI = {}
+local GUI = {
+  ALIGN_TOP_LEFT = 1,
+  ALIGN_TOP_MIDDLE = 2,
+  ALIGN_TOP_RIGHT = 3,
+  ALIGN_MIDDLE_LEFT = 4,
+  ALIGN_MIDDLE_MIDDLE = 5,
+  ALIGN_MIDDLE_RIGHT = 6,
+  ALIGN_BOTTOM_LEFT = 7,
+  ALIGN_BOTTOM_MIDDLE = 8,
+  ALIGN_BOTTOM_RIGHT = 9,
+
+  DISABLED_COLOR_1 = 0x5A5A5A,
+  DISABLED_COLOR_2 = 0x878787,
+
+  BASE_ANIMATION_STEP = 0.05,
+
+  BUTTON_ANIMATION_DURATION = 0.2,
+}
 
 -- Optimization for lua
 local len = unicode.len
 local insert = table.insert
+local floor = math.floor
+local min = math.min
+
+
+-- Global functions like alert()
+
 
 -- Base application tab class
 
@@ -99,9 +123,8 @@ function GUIObject:create(x, y, width, height)
 end
 
 function GUIObject:eventHandler(...)
-  if self.eventHandler ~= nil then self.eventHandler(self, ...) end
+  -- Default: no event handler
 end
-
 
 
 -- Base Animation class
@@ -131,7 +154,7 @@ function Animation:start(duration, delay)
     os.sleep(delay)
     local i = 0
     while i < duration do
-      self.aniFunction(GUIObj, i / duration)
+      self.aniFunction(GUIObj, i / duration, self)
       os.sleep(self.stepSize)
       i = i + self.stepSize
     end
@@ -152,13 +175,73 @@ end
 
 
 
+-- Text Labels --
+------------------------------------------------
+local function drawLabel(label)
+  -- 0 = top/left, 1 = middle, 2 = bottom/right
+  local ALIGN_X, ALIGN_Y = label.align % 3, floor(label.align / 3)
+  local x, y
+
+  -- Calculate x alignment
+  if ALIGN_X == 1 then x = label.x + (label.width - label.textWidth) / 2   -- Middle
+  elseif ALIGN_X == 2 then x = label.x + label.width - label.textWidth     -- Right
+  else x = label.x end -- Left
+
+  -- Calculate y alignment
+  if ALIGN_Y == 1 then y = label.y + (label.height - label.textHeight) / 2 -- Middle
+  elseif ALIGN_Y == 2 then y = label.y + label.height - label.textHeight   -- Bottom
+  else y = label.y end -- Top
+
+  screen.setForeground(label.color)
+  screen.drawText(x, y, label.text, 1, true)
+end
+
+function GUI.createLabel(x, y, text, textColor, width, height, align)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, text, "string")
+  checkArg(4, textColor, "number")
+
+  -- Alignment (default to top left)
+  if not align then align = GUI.ALIGN_TOP_LEFT end
+
+  -- Height of the "text", not necessarily the label boundary
+  local textWidth, textHeight
+
+  -- Auto width and height if width is "auto" or nil (same for height)
+  if width == nil or width == "auto" then
+    width, height = len(text), 1
+    textWidth, textHeight = width, height
+  elseif height == nil or height == "auto" then
+    text, height = format.wrap(text, width)
+    textWidth, textHeight = min(width, len(text)), height
+  else
+    text, textHeight = format.wrap(text, width)
+    textWidth = min(width, len(text))
+  end
+
+  local label = GUIObject:create(x, y, width, height)
+
+  -- Basic Properties --
+  label.text = text
+  label.align = align
+  label.color = textColor
+
+  -- Additional label properties --
+  label.type = "label"
+  label.draw = drawLabel
+  label.textWidth = textWidth
+  label.textHeight = textHeight
+
+  return label
+end
 
 
 -- Buttons --
 ------------------------------------------------
 
 -- Button animation (Fade)
-local function buttonAnimation(button, percentDone)
+local function buttonAnimation(button, percentDone, animation)
   -- Switch buttons fade directly to the new state
   if button.switchMode then
     if button.pressed then -- Fade towards "on" state
@@ -179,23 +262,15 @@ local function buttonAnimation(button, percentDone)
       button.currentTextColor = color.transition(button.textColor, button.textPressedColor, 1 - 2 * (percentDone - 0.5))
     end
   end
-  button.draw(button, true) -- Don't force set default colors based on pressed state
+  button.draw(button) -- Update appearance
 end
 
 -- Set the background / foreground colors depending on
 -- the button object (isPressed)
-local function setButtonColors(button, dontSetColors)
-  if not dontSetColors then
-    if button.disabled then
-      button.currentColor = 0x5A5A5A
-      button.currentTextColor = 0x878787
-    elseif button.pressed then
-      button.currentColor = button.pressedColor
-      button.currentTextColor = button.textPressedColor
-    else
-      button.currentColor = button.buttonColor
-      button.currentTextColor = button.textColor
-    end
+local function setButtonColors(button)
+  if button.disabled then -- Forcibly override style for disabled buttons
+    button.currentColor = GUI.DISABLED_COLOR_1
+    button.currentTextColor = GUI.DISABLED_COLOR_2
   end
 
   screen.setBackground(button.currentColor)
@@ -203,8 +278,8 @@ local function setButtonColors(button, dontSetColors)
 end
 
 -- Button drawing function --
-local function drawButton(button, dontSetColors)
-  setButtonColors(button, dontSetColors)
+local function drawButton(button)
+  setButtonColors(button)
 
   -- Framed buttons do not get the solid fill
   if button.framed then
@@ -240,6 +315,16 @@ local function buttonEventHandler(button, ...)
 end
 
 local function createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha, isFrame)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, height, "number")
+  checkArg(5, text, "string")
+  checkArg(6, buttonColor, "number")
+  checkArg(7, textColor, "number")
+  checkArg(8, pressedColor, "number")
+  checkArg(9, textPressedColor, "number")
+
   local button = GUIObject:create(x, y, width, height)
 
   if bgAlpha == nil then bgAlpha = 1 end
@@ -255,14 +340,14 @@ local function createButton(x, y, width, height, text, buttonColor, textColor, p
   button.pressed = false
   button.switchMode = false
   button.disabled = false
-  button.animationDuration = 0.2
+  button.animationDuration = GUI.BUTTON_ANIMATION_DURATION
   button.onTouch = nil
   button.type = "button"
   button.eventHandler = buttonEventHandler
   button.onClick = onClick
   button.draw = drawButton
   button.framed = isFrame
-  button.animation = Animation:create(buttonAnimation, 0.05, button)
+  button.animation = Animation:create(buttonAnimation, GUI.BASE_ANIMATION_STEP, button)
 
   return button
 end
