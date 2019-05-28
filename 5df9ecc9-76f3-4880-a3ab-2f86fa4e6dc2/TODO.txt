@@ -43,10 +43,34 @@ https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
 gui idea 
 - gui divs, keep elements inside from rendering out of bounds, iwht scroll 
 - div:addChild add element
-- buttons and shit 
 - tab class - handles events
 
-button don't draw text out of bounds 
+createAdaptive Button
+
+underline using unicode 
+
+check find in wrap works with unicode chars
+
+
+wrapable text obj
+
+progressIndicator
+
+
+color pciker - needs some sort of z-indexing
+- 2 types: 1 from OC palette and other more general 
+
+
+save some colors for system 
+
+
+
+
+system.auth() command - awaits password, no keylogging allowed!
+
+http://www.directupload.net/file/d/4567/72sfmphs_png.htm 
+https://ocdoc.cil.li/tutorial:program:install 
+
 
 
 System
