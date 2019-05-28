@@ -11,7 +11,12 @@ local insert = table.insert
 local concat = table.concat
 local find = string.find
 
-
+-- Trim the string to the length
+function format.trimLength(text, length, suffix)
+  if not suffix then suffix = "…" end
+  if len(text) > length then return sub(text, 1, length - 1) .. suffix end
+  return text
+end
 
 -- Wrap text to width
 function format.wrap(text, width, returnAsTable)

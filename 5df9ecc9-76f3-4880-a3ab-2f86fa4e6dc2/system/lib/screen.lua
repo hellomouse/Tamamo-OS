@@ -332,9 +332,7 @@ function update(force)
           subgroup[#subgroup + 1] = {x + j - i, y, changeSym[j], charcount}
 
           -- Reset the change buffer
-          changeBg[j], changeFg[j] = -17, -17
-          changeSym[j] = " "
-
+          changeBg[j], changeFg[j], changeSym[j] = -17, -17, " "
           j = j + charcount
         end
 
@@ -605,20 +603,20 @@ end
 -- Optionally, blendBg can be set to false to
 -- not use adapative background
 -- Returns the character to use for the fill
-local function setAdaptive(x, y, cfg, cbg, transparency, blendBg, blendBgTransparency, symbol)
-  if transparency == 1 and blendBgTransparency then
+local function setAdaptive(x, y, cfg, cbg, alpha, blendBg, blendBgalpha, symbol)
+  if alpha == 1 and blendBgalpha then
     if cbg ~= nil and cbg ~= false then setBackground(cbg) end
     if cfg ~= nil and cfg ~= false then setForeground(cfg) end
-    goto symbolcheck
+    return symbol
   end
 
   bg, fg, sym = getRaw(x, y)
 
   if blendBg then
-    if blendBgTransparency then setBackground(color.blend(bg, cbg, transparency))
+    if blendBgalpha then setBackground(color.blend(bg, cbg, 1 - alpha))
     else setBackground(color.getProminentColor(fg, bg, sym)) end
   end
-  setForeground(color.blend(fg, cfg, transparency))
+  setForeground(color.blend(fg, cfg, alpha))
 
   -- If filling with a space it's better if one fills with the background symbol
   -- instead of losing accuracy by overwriting it with a space
@@ -626,58 +624,58 @@ local function setAdaptive(x, y, cfg, cbg, transparency, blendBg, blendBgTranspa
   if sym == nil then bg, fg, sym = getRaw(x, y) end -- Since the goto skips this line
 
   if symbol == " " or symbol == "⠀" then -- 2nd is unicode 0x2800, not regular space
-    setForeground(color.blend(fg, cbg, transparency))
+    setForeground(color.blend(fg, cbg, 1 - alpha))
     return sym
   elseif symbol == "█" then  -- Full block doesn't blend with current background
-    return sym
+    return symbol
   end
   return symbol -- Otherwise fill with the symbol
 end
 
 
 -- Screen drawing methods --
--- Important note: transparency is equal to alpha value, meaning 1 = visible, 0 = invisible --
+-- Important note: alpha is equal to alpha value, meaning 1 = visible, 0 = invisible --
 -- Sorry for bad variable naming --
 
 -- Draw a rectangle (border) with current bg and fg colors,
--- with optional transparency
-function drawRectOutline(x, y, w, h, transparency)
+-- with optional alpha
+function drawRectOutline(x, y, w, h, alpha)
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
-  if transparency == nil then transparency = 1 end
+  if alpha == nil then alpha = 1 end
 
   checkArg(1, x, "number")
   checkArg(2, y, "number")
   checkArg(3, w, "number")
   checkArg(4, h, "number")
-  checkArg(5, transparency, "number")
+  checkArg(5, alpha, "number")
 
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
 
   -- Corners
-  setAdaptive(x, y, cfg, cbg, transparency, true, false)
+  setAdaptive(x, y, cfg, cbg, alpha, true, false)
   set(x, y, "┌")
-  setAdaptive(x + w - 1, y, cfg, cbg, transparency, true, false)
+  setAdaptive(x + w - 1, y, cfg, cbg, alpha, true, false)
   set(x + w - 1, y, "┐")
-  setAdaptive(x, y + h - 1, cfg, cbg, transparency, true, false)
+  setAdaptive(x, y + h - 1, cfg, cbg, alpha, true, false)
   set(x, y + h - 1, "└")
-  setAdaptive(x + w, y + h - 1, cfg, cbg, transparency, true, false)
+  setAdaptive(x + w, y + h - 1, cfg, cbg, alpha, true, false)
   set(x + w - 1, y + h - 1, "┘")
 
   -- Top and bottom
   for x1 = x + 1, x + w - 2 do
-    setAdaptive(x1, y, cfg, cbg, transparency, true, false)
+    setAdaptive(x1, y, cfg, cbg, alpha, true, false)
     set(x1, y, "─")
-    setAdaptive(x1, y + h - 1, cfg, cbg, transparency, true, false)
+    setAdaptive(x1, y + h - 1, cfg, cbg, alpha, true, false)
     set(x1, y + h - 1, "─")
   end
 
   -- Sides
   for y1 = y + 1, y + h - 2 do
-    setAdaptive(x, y1, cfg, cbg, transparency, true, false)
+    setAdaptive(x, y1, cfg, cbg, alpha, true, false)
     set(x, y1, "│")
-    setAdaptive(x + w - 1, y1, cfg, cbg, transparency, true, false)
+    setAdaptive(x + w - 1, y1, cfg, cbg, alpha, true, false)
     set(x + w - 1, y1, "│")
   end
 
@@ -688,18 +686,18 @@ function drawRectOutline(x, y, w, h, transparency)
 end
 
 -- Fill a rectangle with the current bg and fg colors,
--- with optional transparency. Because of transparency
+-- with optional alpha. Because of alpha
 -- we have to reimplement fill code
-function drawRect(x, y, w, h, transparency)
+function drawRect(x, y, w, h, alpha)
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
-  if transparency == nil then transparency = 1 end
+  if alpha == nil then alpha = 1 end
 
   checkArg(1, x, "number")
   checkArg(2, y, "number")
   checkArg(3, w, "number")
   checkArg(4, h, "number")
-  checkArg(5, transparency, "number")
+  checkArg(5, alpha, "number")
 
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
@@ -710,7 +708,7 @@ function drawRect(x, y, w, h, transparency)
     if x1 > bufferWidth then goto continue end
     if y1 > bufferHeight then break end
     
-    set(x1, y1, setAdaptive(x1, y1, cfg, cbg, transparency, true, true, " "), false, true)
+    set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, " "), false, true)
     ::continue::
   end end
 
@@ -721,27 +719,27 @@ function drawRect(x, y, w, h, transparency)
 end
 
 -- Draw a string at the location (Straight line, newlines ignore)
--- If transparency is enabled, foreground is blended w/ bg
+-- If alpha is enabled, foreground is blended w/ bg
 -- If blendBg is enabled, the background will be selected to try
 -- to camouflage itself with the existing buffer
-function drawText(x, y, string, transparency, blendBg)
+function drawText(x, y, string, alpha, blendBg)
   x, y = floor(x), floor(y)
 
   -- Save current colors
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
-  if transparency == nil then transparency = 1 end
+  if alpha == nil then alpha = 1 end
 
   checkArg(1, x, "number")
   checkArg(2, y, "number")
   checkArg(3, string, "string")
-  checkArg(4, transparency, "number")
+  checkArg(4, alpha, "number")
 
   for dx = 0, len(string) - 1 do
     if x < 1 then goto continue end
     if x > bufferWidth then break end
 
-    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, transparency, blendBg, false, sub(string, dx + 1, dx + 1)))
+    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)))
     ::continue::
   end
 
@@ -754,11 +752,11 @@ end
 function drawEllipseOutline()
 end
 
-function drawEllipse(x, y, a, b, transparency)
+function drawEllipse(x, y, a, b, alpha)
   x, y, a, b = floor(x), floor(y), floor(a), floor(b)
 
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
-  if transparency == nil then transparency = 1 end
+  if alpha == nil then alpha = 1 end
 
   local a2, b2 = a * a, b * b -- Store the axis squared
   local computedBound
@@ -769,7 +767,7 @@ function drawEllipse(x, y, a, b, transparency)
   checkArg(2, y, "number")
   checkArg(3, a, "number")
   checkArg(4, b, "number")
-  checkArg(5, transparency, "number")
+  checkArg(5, alpha, "number")
 
   -- Directly fill if area is large enough
   for x1 = x - a, x + a - 1 do
@@ -783,7 +781,7 @@ function drawEllipse(x, y, a, b, transparency)
     computedBound = (x1 - x) * (x1 - x) / a2 + (y1 - y) * (y1 - y) / b2
     if computedBound > 1 then goto continue end
 
-    set(x1, y1, setAdaptive(x1, y1, cfg, cbg, transparency, true, true, " "), false, true)
+    set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, " "), false, true)
     ::continue::
   end end
 
@@ -794,11 +792,11 @@ function drawEllipse(x, y, a, b, transparency)
 end
 
 -- Draw a line (Using braille characters)
--- from 1 point to another, optionally with transparency
+-- from 1 point to another, optionally with alpha
 -- Optional line character, which will override ALL line characters
-function drawLineThin(x1, y1, x2, y2, transparency, lineChar)
+function drawLineThin(x1, y1, x2, y2, alpha, lineChar)
   x1, y1, x2, y2 = floor(x1), floor(y1), floor(x2), floor(y2)
-  if transparency == nil then transparency = 1 end
+  if alpha == nil then alpha = 1 end
 
   -- Save current colors
   local currentFgSave, currentBgSave = currentFg, currentBg
@@ -808,7 +806,7 @@ function drawLineThin(x1, y1, x2, y2, transparency, lineChar)
   checkArg(2, y1, "number")
   checkArg(3, x2, "number")
   checkArg(4, y2, "number")
-  checkArg(5, transparency, "number")
+  checkArg(5, alpha, "number")
 
   -- Horz line
   if y1 == y2 then
@@ -817,7 +815,7 @@ function drawLineThin(x1, y1, x2, y2, transparency, lineChar)
       if x < 1 then goto continue end
       if x > bufferWidth then break end
 
-      setAdaptive(x, y1, cfg, false, transparency, true, false)
+      setAdaptive(x, y1, cfg, false, alpha, true, false)
       set(x, y1, lineChar, false, true)
 
       ::continue::
@@ -832,7 +830,7 @@ function drawLineThin(x1, y1, x2, y2, transparency, lineChar)
       if y < 1 then goto continue end
       if y > bufferHeight then break end
 
-      setAdaptive(x1, y, cfg, false, transparency, true, false)
+      setAdaptive(x1, y, cfg, false, alpha, true, false)
       set(x1, y, lineChar, false, true)
 
       ::continue::
