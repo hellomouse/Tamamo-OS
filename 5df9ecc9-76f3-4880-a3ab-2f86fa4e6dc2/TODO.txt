@@ -21,6 +21,7 @@ https://github.com/IgorTimofeev/MineOS/wiki/Component-API
 https://oc.cil.li/topic/421-tar-for-opencomputers/ 
 https://ocdoc.cil.li/api:thread
 https://www.reddit.com/r/feedthebeast/comments/4535b8/draconic_evolution_reactor_for_science/ 
+https://oc.cil.li/topic/1010-how-to-craft-items-in-ae2-network/
 
 Boot options 
 - Disk options 
@@ -28,43 +29,105 @@ Boot options
 - Shutdown
 - Back 
 
+game of life
+
+https://oc.cil.li/topic/987-i-got-so-bored-i-made-an-ime-with-a-very-basic-text-editor-that-doesnt-even-save-and-load/
+kanji input / chinese
+
+tape looper 
+https://oc.cil.li/topic/784-computronics-tape-drive-looper/
+
+https://github.com/TetraSource/OC-programs/wiki/Bundle
+
 
 TPM - tamamo package manager (thx asdfbot)
 
+
+clone hard drive
+
+https://oc.cil.li/topic/443-comprehensive-unicode-reference-images/
+
+
+tablet as build wand 
 
 Permissions like in android 
 - App would like to access OS GUI container
 - Detect gpu and shit and notify in list
 
+underline using unicode 
+check find in wrap works with unicode chars
+sys internal screen update loop
+test the moveForward and shit 
 
 https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
 https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
+
+https://oc.cil.li/topic/1851-oetf-16-open-extensible-firmware-interface/
+https://github.com/Adorable-Catgirl/Zorya-BIOS
+
+https://www.reddit.com/r/loadingicon/comments/bwdx14/oc_a_roll_of_the_metaphysical_dice/
+
+https://github.com/dunstad/roboserver
+https://oc.cil.li/topic/1672-fishing-program/#comment-7668
+
+drone player transport
+
+Sectionlike structure of the man program
 
 gui idea 
 - gui divs, keep elements inside from rendering out of bounds, iwht scroll 
 - div:addChild add element
 - tab class - handles events
 
-createAdaptive Button
+- solution: redraw parent any elements that overlap with guiobject instead of .draw for slef update
 
-underline using unicode 
+rewrite animation threads to use 1 thread to optimize memory?
+- calculate itming based on thread main tick iteration to get number of ticks before counting, 
+ - iterates all active animations
 
-check find in wrap works with unicode chars
+
+gui: 
+slider
+list (tabs / vertical)
+table 
+dropdown box 
+file selector 
+code view 
+chart
 
 
-wrapable text obj
 
-progressIndicator
+perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
+
+
+validate width and shit < 0 and other checks not just checkarg
+progressbar is showval then must define textcolor
+
+replace the .functions with : (self) - all the .draws
+
+
+no drawing until added to parent
 
 
 color pciker - needs some sort of z-indexing
-- 2 types: 1 from OC palette and other more general 
+- instead of 240 buttons calculate from mouse click
 
+
+
+objects with animation are drawn regardless if visible or added
+
+color picker should be seperate GUI object adedd
+
+https://github.com/IgorTimofeev/AdvancedLua/blob/master/README.md
+https://youtu.be/dmlt1883ypE?t=16
 
 save some colors for system 
 
 
+ssh and ftp
+https://gitlab.com/polyzium/ngsh
 
+virtual components 
 
 system.auth() command - awaits password, no keylogging allowed!
 

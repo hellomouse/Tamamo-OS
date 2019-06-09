@@ -27,9 +27,15 @@ local GUI = {
 
   KEYBOARD_CHARS = " --~!@#$%^&*()_+-=`?><\":{}|[\\]';/.,",
 
+  -- Cursor blinking for inputs
   CURSOR_CHAR = " ",         -- This value changes back and forth
-  CURSOR_BLINK = 0x0FFAA00, 
+  CURSOR_BLINK = 0xF49241, 
   CURSOR_BLINK_DURATION = 0.5,
+
+  -- Progress indicator
+  PROGRESS_WIDTH = 10,
+  PROGRESS_HEIGHT = 1,
+  PROGRESS_DELAY = 0.05
 }
 
 -- Optimization for lua
@@ -42,6 +48,7 @@ local insert = table.insert
 local remove = table.remove
 
 local floor = math.floor
+local ceil = math.ceil
 local min = math.min
 
 -- Global cursor blink update
@@ -59,7 +66,11 @@ end)
 
 
 -- Global functions like alert()
+function GUI.alert(message)
+  screen.resetDrawingBound()
+  screen.setBackground(0x0)
 
+end
 
 -- Base application tab class
 
@@ -83,21 +94,63 @@ function GUIContainer:create(x, y, width, height, scrollable, autoScrollX, autoS
   return obj
 end
 
-function GUIContainer:addChild(guiObject, index)
-  -- TODO convert global coords to local
-  -- TODO margins for containers? or have a panel class?
-
-  if index == nil then 
-    insert(self.children, guiObject)
-  else
-    insert(self.children, guiObject, index)
+function GUIContainer:findChild(obj)
+  for i = 1, #self.children do
+    if self.children[i] == obj then return i end
   end
+end
+
+function GUIContainer:addChild(guiObject, index)
+  -- Add properties
+  guiObject.localX = guiObject.x
+  guiObject.localY = guiObject.y
+  guiObject.parent = self
+
+  -- Convert local coords to global
+  guiObject.x = self.x + guiObject.x
+  guiObject.y = self.y + guiObject.y
+
+  -- Wrap draw function to respect parent boundary
+  if guiObject.draw then
+    local tempdraw = guiObject.draw
+    guiObject.draw = function(obj)
+      obj.parent:setBounds() -- Limit bounds by the parent
+
+      -- Update local coordinates
+      obj.localX = obj.x - obj.parent.x
+      obj.localY = obj.y - obj.parent.y
+      tempdraw(obj)
+    end
+  end
+
+  -- Set index properties
+  guiObject.getIndex = function() return self:findChild(guiObject) end
+  guiObject.moveForward = function()
+    local newIndex = self:findChild(guiObject) + 1
+    if newIndex > #self.children then newIndex = #self.children end
+    self.children:add(guiObject.remove(), newIndex)
+  end
+  guiObject.moveBackward = function()
+    local newIndex = self:findChild(guiObject) - 1
+    if newIndex < 1 then newIndex = 1 end
+    self.children:add(guiObject.remove(), newIndex)
+  end
+  guiObject.moveToFront = function() self.children:add(guiObject.remove()) end
+  guiObject.moveToBack =  function() self.children:add(guiObject.remove(), 1) end
+  guiObject.remove = function() return self.children:remove(self:findChild(guiObject)) end
+
+  if index == nil then insert(self.children, guiObject)
+  else insert(self.children, guiObject, index) end
+end
+
+function GUIContainer:removeChild(index)
+  remove(self.children, index)
 end
 
 function GUIContainer:draw()
   -- TODO scrollbars and shit
   screen.setDrawingBound(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, true)
-  local bx1, by1, bx2, by2 = screen.getDrawingBound()
+  self.boundX1, self.boundY1, self.boundX2, self.boundY2 = screen.getDrawingBound()
 
   for i = 1, #self.children do
     -- Don't render hidden elements
@@ -113,9 +166,13 @@ function GUIContainer:draw()
       self.children[i].draw(self.children[i])
     end
 
-    screen.setDrawingBound(bx1, by1, bx2, by2)
+    screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
     ::continue::
   end
+end
+
+function GUIContainer:setBounds()
+  screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
 end
 
 function GUIContainer:eventHandler(...)
@@ -203,32 +260,58 @@ function Animation:stop(percentDone)
   self.thread = nil
 end
 
-
--- Colored Panels --
+-- Panel --
 ------------------------------------------------
 local function drawPanel(panel)
+  local bx1, by1, bx2, by2
+  if panel.overrideBound then
+    screen.setDrawingBound(panel.x, panel.y, panel.x + panel.width - 1, panel.y + panel.height - 1, false)
+    bx1, by1, bx2, by2 = screen.getDrawingBound()
+  end
+
   screen.setBackground(panel.color)
-  screen.drawRect(panel.x, panel.y, panel.width, panel.height, panel.alpha)
+  screen.drawRect(panel.x, panel.y, panel.width, panel.height, panel.bgAlpha)
+  panel.container:draw()
+
+  -- Reset original bounds
+  screen.setDrawingBound(bx1, by1, bx2, by2)
 end
 
-function GUI.createPanel(x, y, width, height, color, alpha)
+local function panelEventHandler(panel, ...)
+  panel.container:eventHandler(...)
+end
+
+function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, overrideBound)
   checkArg(1, x, "number")
   checkArg(2, y, "number")
   checkArg(3, width, "number")
   checkArg(4, height, "number")
-  checkArg(5, color, "number")
+  checkArg(5, bgColor, "number")
 
-  if not alpha then alpha = 1 end
+  if bgAlpha == nil then bgAlpha = 1 end
+  if margin == nil then margin = 0 end
+
+  checkArg(6, bgAlpha, "number")
+  checkArg(7, margin, "number")
 
   local panel = GUIObject:create(x, y, width, height)
-  panel.color = color
+
+  -- Basic Properties --
+  panel.color = bgColor
   panel.type = "panel"
   panel.draw = drawPanel
-  panel.alpha = alpha
+
+  -- Y margin is halved since cells are 2x taller than wide
+  panel.container = GUIContainer:create(x + margin, ceil(y + margin / 2), width - margin * 2, height - margin)
+  panel.overrideBound = overrideBound
+
+  -- Functions --
+  panel.addChild = function(guiObj, index) panel.container:addChild(guiObj, index) end
+  panel.removeChild = function(index) panel.container:removeChild(index) end
+  panel.eventHandler = panelEventHandler
 
   return panel
 end
-
 
 -- Image wrapper --
 ------------------------------------------------
@@ -246,6 +329,60 @@ function GUI.createImage(x, y, loadedImage)
   img.loaded = loadedImage
 
   return img
+end
+
+-- Text Box --
+------------------------------------------------
+local function drawTextBox(textbox)
+  screen.setForeground(textbox.color)
+
+  -- Textbox text should wrap around
+  for i = 1, #textbox.lines do
+    screen.drawText(textbox.x, textbox.y + i - 1, textbox.lines[i], 1, true)
+  end
+end
+
+function GUI.createTextBox(x, y, text, textColor, width, height)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, text, "string")
+  checkArg(4, textColor, "number")
+
+  -- Height of the "text", not necessarily the label boundary
+  local textWidth, textHeight
+
+  -- Auto width and height if width is "auto" or nil (same for height)
+  if width == nil or width == "auto" then
+    width, height = len(text), 1
+    textWidth, textHeight = width, height
+  elseif height == nil or height == "auto" then
+    text, height = format.wrap(text, width)
+    textWidth, textHeight = min(width, len(text)), height
+  else
+    text, textHeight = format.wrap(text, width)
+    textWidth = min(width, len(text))
+  end
+
+  local textbox = GUIObject:create(x, y, width, height)
+
+  -- Basic Properties --
+  textbox.lines = {}
+  local i = 1
+  for s in text:gmatch("[^\r\n]+") do
+    textbox.lines[i] = s
+    i = i + 1
+  end
+
+  textbox.align = align
+  textbox.color = textColor
+
+  -- Additional textbox properties --
+  textbox.type = "textbox"
+  textbox.draw = drawTextBox
+  textbox.textWidth = textWidth
+  textbox.textHeight = textHeight
+
+  return textbox
 end
 
 
@@ -310,6 +447,85 @@ function GUI.createLabel(x, y, text, textColor, width, height, align)
   return label
 end
 
+-- Switchs --
+------------------------------------------------
+
+-- Switch animation (Fade)
+local function switchAnimation(switch, percentDone, animation)
+  -- If switch is on head towards dx = width, otherwise
+  -- do the exact opposite
+  if switch.toggled then 
+    switch.animationdx = ceil(switch.width * percentDone) - 1
+  else switch.animationdx = ceil(switch.width * (1 - percentDone)) - 1 end
+
+  -- Quick fix for out of bounds
+  if switch.animationdx < 0 then switch.animationdx = 0 
+  elseif switch.animationdx > switch.width - 2 then switch.animationdx = switch.width - 2 end
+  
+  switch.draw(switch) -- Update appearance
+end
+
+-- Switch drawing function --
+local function drawSwitch(switch)
+  screen.setBackground(switch.inactiveColor)
+  screen.drawText(switch.x, switch.y, "     ")
+
+  screen.setBackground(switch.activeColor)
+  screen.drawText(switch.x, switch.y, rep(" ", switch.animationdx))
+
+  screen.setBackground(switch.cursorColor)
+  screen.drawText(switch.x + switch.animationdx, switch.y, "  ")
+end
+
+-- Event handler for switch, deals only with touch events for now --
+local function switchEventHandler(switch, ...)
+  if switch.disabled then return end -- Ignore event handling for disabled switches
+  if select(1, ...) == "touch" then
+    -- Check bounds for touch
+    local x, y = select(3, ...), select(4, ...)
+    if x < switch.x or x > switch.x + switch.width or
+       y < switch.y or y > switch.y + switch.height then
+        return
+    end
+
+    -- Invert the toggled boolean
+    switch.toggled = not switch.toggled
+    if switch.onChange then -- Call onchange function
+      switch.onChange(switch, ...) end
+    switch.animation:start(switch.animationDuration)
+  end
+end
+
+function GUI.createSwitch(x, y, inactiveColor, activeColor, cursorColor)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, inactiveColor, "number")
+  checkArg(4, activeColor, "number")
+  checkArg(5, cursorColor, "number")
+
+  local switch = GUIObject:create(x, y, 5, 1)
+  
+  -- Basic Properties --
+  switch.inactiveColor, switch.activeColor = inactiveColor, activeColor
+  switch.cursorColor = cursorColor
+
+  -- Additional switch properties --
+  switch.toggled = false
+  switch.disabled = false
+  switch.animationDuration = GUI.BUTTON_ANIMATION_DURATION
+  switch.type = "switch"
+  switch.eventHandler = switchEventHandler
+  switch.onChange = nil
+  switch.draw = drawSwitch
+  switch.animationdx = 0
+  switch.animation = Animation:create(switchAnimation, GUI.BASE_ANIMATION_STEP, switch)
+  switch.setState = function(state)
+    switch.toggled = state
+    switch.animation:start(switch.animationDuration)
+  end
+
+  return switch
+end
 
 -- Buttons --
 ------------------------------------------------
@@ -434,6 +650,16 @@ function GUI.createFramedButton(x, y, width, height, text, buttonColor, textColo
   return createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha, true)
 end
 
+function GUI.createAdaptiveButton(x, y, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha)
+  local width, height = len(text) + 2, 3
+  return createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha)
+end
+
+function GUI.createAdaptiveFramedButton(x, y, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha)
+  local width, height = len(text) + 2, 3
+  return createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha, true)
+end
+
 
 -- Text input --
 ------------------------------------------------
@@ -472,6 +698,8 @@ local function addKeyToInput(input, keyCode, code)
   elseif code == 200 and input.history then -- Up arrow
     input.historyIndex = input.historyIndex - 1
     if input.historyIndex < 1 then input.historyIndex = #input.historyArr end
+    if input.historyArr[input.historyIndex] == nil then return end
+
     input.value = input.historyArr[input.historyIndex]
     input.scroll = 0
     input.cursor = len(input.value) + 1
@@ -479,6 +707,8 @@ local function addKeyToInput(input, keyCode, code)
   elseif code == 208 and input.history then -- Down arrow 
     input.historyIndex = input.historyIndex + 1
     if input.historyIndex > #input.historyArr then input.historyIndex = 1 end
+    if input.historyArr[input.historyIndex] == nil then return end
+
     input.value = input.historyArr[input.historyIndex]
     input.scroll = 0
     input.cursor = len(input.value) + 1
@@ -528,7 +758,8 @@ local function inputEventHandler(input, ...)
 
     -- Focus the input and set the cursor
     input.focused = true
-    input.cursor = input.scroll + x - input.x - GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2
+    input.cursor = input.scroll + x - input.x - input.pad / 2
+
     limitCursor(input)
 
     if input.onClick then -- Call onclick function
@@ -580,12 +811,12 @@ local function drawInput(input)
   -- No input value, check if a placeholder is defined --
   if input.placeholder ~= nil and input.placeholderTextColor ~= nil and not input.focused and len(textToRender) == 0 then 
     screen.setForeground(input.placeholderTextColor)
-    screen.drawText(input.x + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2, input.y + input.height / 2, input.placeholder)
+    screen.drawText(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
   else
     -- Placeholder always drawn if keep placeholder is true 
     if input.keepPlaceholder then
       local temp = screen.setForeground(input.placeholderTextColor)
-      screen.drawText(input.x + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2, input.y + input.height / 2, input.placeholder)
+      screen.drawText(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
       screen.setForeground(temp)
     end
 
@@ -596,22 +827,22 @@ local function drawInput(input)
     -- A space will be inserted where the cursor will go
     if input.textMask == nil then
       textToRender = sub(textToRender, 1, input.cursor - 1) .. cursorSpace .. sub(textToRender, input.cursor)
-      if len(textToRender) > input.width - GUI.INPUT_LEFT_RIGHT_TOTAL_PAD then
+      if len(textToRender) > input.width - input.pad then
         textToRender = sub(textToRender, input.scroll + 1, input.scroll - 2 + input.width)
       end
     else
       textToRender = rep(input.textMask, input.cursor - 1) .. cursorSpace .. rep(input.textMask, len(input.value) - input.cursor)
-      if len(textToRender) > input.width - GUI.INPUT_LEFT_RIGHT_TOTAL_PAD then
+      if len(textToRender) > input.width - input.pad then
         textToRender = sub(textToRender, input.scroll + 1, input.scroll - 2 + input.width)
       end
     end
 
-    screen.drawText(input.x + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2, input.y + input.height / 2, textToRender)
+    screen.drawText(input.x + input.pad / 2, input.y + input.height / 2, textToRender)
 
     -- Render the cursor
     if input.focused then
       screen.setForeground(GUI.CURSOR_BLINK)
-      screen.drawText(input.x  + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2 + input.cursor - input.scroll - 1, input.y + input.height / 2,
+      screen.drawText(input.x  + input.pad / 2 + input.cursor - input.scroll - 1, input.y + input.height / 2,
         GUI.CURSOR_CHAR)
     end
   end
@@ -675,47 +906,189 @@ function GUI.createInput(x, y, width, height, bgColor, textColor, focusColor,
   input.animation = Animation:create(inputAnimation, GUI.CURSOR_BLINK_DURATION, input)
   input.animation:start(math.huge)
 
+  -- Small inputs have no padding
+  input.pad = GUI.INPUT_LEFT_RIGHT_TOTAL_PAD
+  if input.width == 1 or input.height == 1 then
+    input.pad = 0
+  end
+
   return input
 end
 
-
--- Color Picker --
+-- Progress Indicator --
 ------------------------------------------------
-local function drawPicker(picker)
-  
+local function drawProgressIndicator(indicator)
+  if not indicator.active then screen.setForeground(indicator.bgColor)
+  else screen.setForeground(indicator.activeColor2) end
+  screen.drawText(indicator.x, indicator.y, rep("▂", indicator.width), 1, true)
 end
 
-function GUI.createColorPicker(x, y, text, textColor, width, height, align)
+local function progressIndicatorAnimation(indicator, percentDone, animation)
+  indicator.draw(indicator)
+  screen.setForeground(indicator.activeColor1)
+
+  if indicator.cycle < indicator.width / 2 then -- No cycling back to beginning
+    screen.drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", floor(indicator.width / 2)), 1, true)
+  else
+    screen.drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", indicator.width - indicator.cycle), 1, true)
+    screen.drawText(indicator.x, indicator.y, rep("▂", floor(indicator.width / 2) - indicator.width + indicator.cycle), 1, true)
+  end
+
+  indicator.cycle = indicator.cycle + 1
+  if indicator.cycle > indicator.width then indicator.cycle = 0 end
+  screen.update() -- Fast update cycle requires updating screen
+end
+
+function GUI.createProgressIndicator(x, y, bgColor, activeColor1, activeColor2)
   checkArg(1, x, "number")
   checkArg(2, y, "number")
-  checkArg(3, text, "string")
-  checkArg(4, textColor, "number")
+  checkArg(3, bgColor, "number")
+  checkArg(4, activeColor1, "number")
+  checkArg(5, activeColor2, "number")
 
-  local label = GUIObject:create(x, y, width, height)
+  local indicator = GUIObject:create(x, y, GUI.PROGRESS_WIDTH, GUI.PROGRESS_HEIGHT)
 
-  -- Basic Properties --
-  label.text = text
-  label.align = align
-  label.color = textColor
+  indicator.bgColor = bgColor
+  indicator.activeColor1 = activeColor1
+  indicator.activeColor2 = activeColor2
 
-  -- Additional label properties --
-  label.type = "label"
-  label.draw = drawLabel
+  indicator.type = "progress-indicator"
+  indicator.draw = drawProgressIndicator
 
-  return label
+  indicator.cycle = 0
+  indicator.animation = Animation:create(progressIndicatorAnimation, GUI.PROGRESS_DELAY, indicator)
+  indicator.animation:start(math.huge)
+  indicator.active = true
+
+  return indicator
+end
+
+-- Progress bar --
+------------------------------------------------
+local function drawProgressBar(progressbar)
+  screen.setForeground(progressbar.color)
+  screen.drawText(progressbar.x, progressbar.y, rep("▔", progressbar.width), 1, true)
+
+  screen.setForeground(progressbar.activeColor)
+  screen.drawText(progressbar.x, progressbar.y, rep("▔", ceil(progressbar.width * progressbar.value)), 1, true)
+
+  if progressbar.showValue then
+    local textToRender = progressbar.prefix 
+      .. ceil(progressbar.value * 100) 
+      .. progressbar.suffix
+
+    screen.setForeground(progressbar.textColor)
+    screen.drawText(progressbar.x + progressbar.width / 2 - len(textToRender) / 2, progressbar.y + 1, textToRender, 1, true)
+  end
+end
+
+function GUI.createProgressBar(x, y, width, color, activeColor, value, showValue, textColor, prefix, suffix)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, color, "number")
+  checkArg(5, activeColor, "number")
+  checkArg(6, value, "number")
+
+  local height = 1
+  if showValue then height = 2 end
+  local progressbar = GUIObject:create(x, y, width, height)
+
+  progressbar.type = "progressbar"
+  progressbar.draw = drawProgressBar
+  progressbar.value = value
+
+  progressbar.color = color
+  progressbar.activeColor = activeColor
+  progressbar.showValue = showValue
+  progressbar.textColor = textColor
+  progressbar.prefix = prefix or ""
+  progressbar.suffix = suffix or ""
+  progressbar.setValue = function(val)
+    progressbar.value = val
+    progressbar:draw()
+  end
+
+  return progressbar
 end
 
 
+-- Color Picker (Basic OC palette) --
+------------------------------------------------
 
+-- TODO move to func to create new contaner
+local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1, true)
+colorPickerContainer.overrideBound = true
 
+-- Create the color picker grid
+do
+  local buttonColor
 
+  -- The current square is like a 2D slice of a cube, each dimension
+  -- corresponding to H, S, and V (The 2D slice is x = H, y = S) (z / up / down is V)
+  for y = 1, 20 do
+    for x = 1, 40 do
+      buttonColor = color.HSVToHex(x / 40, 1 - y / 20, 1)
+      colorPickerContainer.addChild(GUI.createButton(x, y + 1, 1, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
+    end
+  end
 
+  -- Side slider
+  for y = 1, 20 do
+    buttonColor = color.HSVToHex(1 / 40, 1 - 1/ 20, 1 - y / 20)
+    colorPickerContainer.addChild(GUI.createButton(x + 28, y + 1, 2, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
+  end
 
+  -- Side input values for HSV and RGB
+  colorPickerContainer.addChild(GUI.createLabel(47, 2, "R: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 2, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
+  colorPickerContainer.addChild(GUI.createLabel(47, 4, "G: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 4, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
+  colorPickerContainer.addChild(GUI.createLabel(47, 6, "B: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 6, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
+  colorPickerContainer.addChild(GUI.createLabel(47, 9, "H: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 9, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
+  colorPickerContainer.addChild(GUI.createLabel(47, 11, "S: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 11, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
+  colorPickerContainer.addChild(GUI.createLabel(47, 13, "V: ", 0x0, 5, 1))
+  colorPickerContainer.addChild(GUI.createInput(51, 13, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+
+end
+
+local function drawPicker(picker)
+  colorPickerContainer.draw(colorPickerContainer)
+end
+
+local function pickerEventHandler(picker, ...)
+  colorPickerContainer.eventHandler(colorPickerContainer, ...)
+end
+
+function GUI.createColorPicker(x, y, width, height, text, currentColor)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, height, "number")
+  checkArg(5, text, "string")
+  checkArg(6, currentColor, "number")
+
+  local picker = GUIObject:create(x, y, width, height)
+
+  -- Basic Properties --
+  picker.text = text
+  picker.currentColor = currentColor
+
+  -- Additional picker properties --
+  picker.type = "colorPickerBasic"
+  picker.draw = drawPicker
+  picker.eventHandler = pickerEventHandler
+
+  return picker
+end
 
 
 

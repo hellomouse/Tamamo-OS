@@ -180,3 +180,10 @@ process library exception handler crashed: /system/lib/screen.lua:393: attempt t
 [thread] /system/lib/gui.lua:167: attempt to index local 'button' (a nil value)
 [thread] /system/lib/gui.lua:137: attempt to compare number with table
 process library exception handler crashed: attempt to yield across a C-call boundary
+[thread] /system/lib/gui.lua:705: attempt to index global 'indcator' (a nil value)
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
+process library exception handler crashed: invalid palette index
