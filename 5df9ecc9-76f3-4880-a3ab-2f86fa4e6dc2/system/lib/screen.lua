@@ -113,6 +113,10 @@ local function setDrawingBound(x1, y1, x2, y2, useCurrent)
   end
 end
 
+local function resetDrawingBound()
+  drawX1, drawY1, drawX2, drawY2 = 0, 0, bufferWidth, bufferHeight
+end
+
 -- Getter for drawing bounds
 local function getDrawingBound()
   return drawX1, drawY1, drawX2, drawY2
@@ -361,7 +365,10 @@ function update(force)
   for bgcolor, group1 in pairs(colorChanges) do
     GPUsetBackground(absColor(bgcolor), bgcolor < 0)
     for fgcolor, group2 in pairs(group1) do
-      GPUsetForeground(absColor(fgcolor), fgcolor < 0)
+      -- In the event a color is just spaces there is no need to
+      -- do a foreground call
+      if #group2 == 1 and (group2[1] == "⠀" or group2[1] == " ") then -- Do nothing
+      else GPUsetForeground(absColor(fgcolor), fgcolor < 0) end
 
       for i = 1, #group2 do
         t = group2[i]
@@ -876,5 +883,6 @@ return {
   drawLineThin = drawLineThin,
   setDrawingBound = setDrawingBound,
   getDrawingBound = getDrawingBound,
+  resetDrawingBound = resetDrawingBound,
   resetPalette = resetPalette
 }
