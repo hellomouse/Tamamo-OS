@@ -72,6 +72,11 @@ https://oc.cil.li/topic/1672-fishing-program/#comment-7668
 
 drone player transport
 
+autocraft computer parts 
+
+
+
+
 Sectionlike structure of the man program
 
 gui idea 
@@ -87,34 +92,34 @@ rewrite animation threads to use 1 thread to optimize memory?
 
 
 gui: 
-slider
 list (tabs / vertical)
 table 
 dropdown box 
 file selector 
 code view 
+seperate checkbox - less lag
 chart
 
+button more types of events to deal with
 
+disabled elements more apparent
 
 perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
+dont change foreground if current foreground is same
 
 
 validate width and shit < 0 and other checks not just checkarg
 progressbar is showval then must define textcolor
 
-replace the .functions with : (self) - all the .draws
 
 
 no drawing until added to parent
+- objects with animation are drawn regardless if visible or added
 
 
 color pciker - needs some sort of z-indexing
 - instead of 240 buttons calculate from mouse click
 
-
-
-objects with animation are drawn regardless if visible or added
 
 color picker should be seperate GUI object adedd
 

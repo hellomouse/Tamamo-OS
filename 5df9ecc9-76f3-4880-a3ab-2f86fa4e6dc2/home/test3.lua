@@ -102,6 +102,8 @@ local bar = gui.createProgressBar(10, 45, 40, 0x333333, 0xFF0000, 0.5, true, 0xF
 container:addChild(bar)
 bar.setValue(0.2)
 
+container:addChild(gui.createSlider(10, 47, 20, 0x333333, 0xFF0000, 0xFFFFFF, 0xFFFFFF, 10, 50, 30, true, true, 2, "BWBellairs "))
+
 container:draw()
 
 

@@ -50,6 +50,7 @@ local remove = table.remove
 local floor = math.floor
 local ceil = math.ceil
 local min = math.min
+local max = math.max
 
 -- Global cursor blink update
 -- TODO move this to some animation object
@@ -159,11 +160,11 @@ function GUIContainer:draw()
     -- GUI Containers already set their drawing bounds, otherwise
     -- we need to restrict drawing bounds for them
     if self.children[i].type == "GUIContainer" then
-      self.children[i].draw(self.children[i])
+      self.children[i]:draw()
     else
       screen.setDrawingBound(self.children[i].x, self.children[i].y, 
         self.children[i].x + self.children[i].width, self.children[i].y + self.children[i].height)
-      self.children[i].draw(self.children[i])
+      self.children[i]:draw()
     end
 
     screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
@@ -177,7 +178,9 @@ end
 
 function GUIContainer:eventHandler(...)
   for i = 1, #self.children do
-    self.children[i]:eventHandler(...)
+    if not self.children[i].disabled then 
+      self.children[i]:eventHandler(...) 
+    end
   end
 end
 
@@ -462,7 +465,7 @@ local function switchAnimation(switch, percentDone, animation)
   if switch.animationdx < 0 then switch.animationdx = 0 
   elseif switch.animationdx > switch.width - 2 then switch.animationdx = switch.width - 2 end
   
-  switch.draw(switch) -- Update appearance
+  switch:draw() -- Update appearance
 end
 
 -- Switch drawing function --
@@ -479,7 +482,6 @@ end
 
 -- Event handler for switch, deals only with touch events for now --
 local function switchEventHandler(switch, ...)
-  if switch.disabled then return end -- Ignore event handling for disabled switches
   if select(1, ...) == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
@@ -511,7 +513,6 @@ function GUI.createSwitch(x, y, inactiveColor, activeColor, cursorColor)
 
   -- Additional switch properties --
   switch.toggled = false
-  switch.disabled = false
   switch.animationDuration = GUI.BUTTON_ANIMATION_DURATION
   switch.type = "switch"
   switch.eventHandler = switchEventHandler
@@ -552,7 +553,7 @@ local function buttonAnimation(button, percentDone, animation)
       button.currentTextColor = color.transition(button.textColor, button.textPressedColor, 1 - 2 * (percentDone - 0.5))
     end
   end
-  button.draw(button) -- Update appearance
+  button:draw() -- Update appearance
 end
 
 -- Set the background / foreground colors depending on
@@ -583,7 +584,6 @@ end
 
 -- Event handler for button, deals only with touch events for now --
 local function buttonEventHandler(button, ...)
-  if button.disabled then return end -- Ignore event handling for disabled buttons
   if select(1, ...) == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
@@ -630,7 +630,6 @@ local function createButton(x, y, width, height, text, buttonColor, textColor, p
   -- Additional button properties --
   button.pressed = false
   button.switchMode = false
-  button.disabled = false
   button.animationDuration = GUI.BUTTON_ANIMATION_DURATION
   button.type = "button"
   button.eventHandler = buttonEventHandler
@@ -660,6 +659,125 @@ function GUI.createAdaptiveFramedButton(x, y, text, buttonColor, textColor, pres
   return createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha, true)
 end
 
+-- Slider drawing function --
+local function drawSlider(slider)
+  slider.value = min(slider.max, max(slider.value, slider.min))
+
+  if slider.showMinMax or slider.showMinMax == nil then
+    screen.setForeground(slider.textColor)
+    screen.drawText(slider.x, slider.y, slider.minStr, 1, true)
+    screen.drawText(slider.x + slider.width - len(slider.maxStr), slider.y, slider.maxStr, 1, true)
+  end
+
+  -- Render the slider colored bar --
+  screen.setForeground(slider.baseColor)
+  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("█", slider.sliderWidth))
+
+  local percentageIn = (slider.value - slider.min) / (slider.max - slider.min)
+  if percentageIn == 1 then percentageIn = 0.999 end -- We aren't allowed actually to take up full width due to rendering bug
+
+  screen.setForeground(slider.sliderColor)
+  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("█", ceil(slider.sliderWidth * percentageIn)))
+  screen.setForeground(slider.knobColor)
+  screen.drawText(slider.x + slider.sliderOffset + floor(slider.sliderWidth * percentageIn), slider.y, "█")
+
+  if slider.showVal then
+    local textToDraw = (slider.prefix or "") .. slider.value.. (slider.suffix or "")
+    screen.setForeground(slider.textColor)
+    screen.drawText(slider.x + slider.width / 2 - len(textToDraw) / 2, slider.y + 1, textToDraw, 1, true)
+  end
+end
+
+-- Event handler for slider --
+local function sliderEventHandler(slider, ...)
+  local etype = select(1, ...)
+  if etype == "touch" or etype == "drag" then
+    -- Check bounds for event
+    local x, y = select(3, ...), select(4, ...)
+    if x < slider.x or x > slider.x + slider.width or
+       y < slider.y or y > slider.y + slider.height then
+        return
+    end
+
+    local oldval = slider.val
+
+    if x <= slider.x + slider.sliderOffset then -- Low bound
+      slider.value = slider.min
+    elseif x >= slider.x + slider.sliderOffset + slider.sliderWidth - 1 then -- High bound
+      slider.value = slider.max
+    else
+      slider.value = (x - slider.x - slider.sliderOffset) / slider.sliderWidth * (slider.max - slider.min) + slider.min
+      slider.value = floor(slider.value / slider.increment) * slider.increment  -- Round to nearest increment
+    end
+
+    slider:draw()
+
+    if slider.onChange and oldval ~= slider.val then -- Call onchange function
+      slider.onChange(slider, ...) end
+  end
+end
+
+function GUI.createSlider(x, y, width, baseColor, sliderColor, knobColor, textColor, min, max, val, showVal, showMinMax, increment, prefix, suffix)
+  -- Variable checking
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, baseColor, "number")
+  checkArg(5, sliderColor, "number")
+  checkArg(6, knobColor, "number")
+  checkArg(7, textColor, "number")
+  checkArg(8, min, "number")
+  checkArg(9, max, "number")
+  checkArg(10, val, "number")
+
+  if showVal ~= nil then checkArg(11, showVal, "boolean") end
+  if showMinMax ~= nil then checkArg(12, showMinMax, "boolean") end
+  if increment ~= nil then checkArg(13, increment, "number") end
+  if prefix ~= nil then checkArg(14, prefix, "string") end
+  if suffix ~= nil then checkArg(15, suffix, "string") end
+
+  -- Increment must < min - max + 1 and min < max
+  if min >= max then error("min must be less than max (" .. min .. " /< " .. max .. " in GUI.createSlider)") end
+  if inc ~= nil and inc > min - max + 1 then error("Increment must be less than the range in GUI.createSlider") end
+
+  -- Create the actual thing
+  local height = 1
+  if showVal then height = 2 end
+
+  local slider = GUIObject:create(x, y, width, height)
+
+  -- Basic Properties --
+  slider.value = val
+  slider.sliderColor, slider.textColor = sliderColor, textColor
+  slider.baseColor, slider.knobColor = baseColor, knobColor
+
+  -- Additional slider properties --
+  slider.min, slider.max = min, max
+  slider.increment = increment or 1
+  slider.showVal = showVal
+  slider.showMinMax = showMinMax
+  slider.prefix = prefix
+  slider.suffix = suffix
+  slider.roundNum = false
+
+  slider.type = "slider"
+  slider.eventHandler = sliderEventHandler
+  slider.onChange = nil
+  slider.draw = drawSlider
+
+  slider.sliderWidth = slider.width
+  slider.sliderOffset = 0
+
+  if showMinMax or showMinMax == nil then
+    slider.maxStr = slider.max .. ""
+    slider.minStr = slider.min .. ""
+
+    slider.sliderWidth = slider.width - len(slider.minStr) - len(slider.maxStr) - 2
+    slider.sliderOffset = len(slider.minStr) + 1
+  end
+
+  return slider
+end
 
 -- Text input --
 ------------------------------------------------
@@ -727,9 +845,9 @@ local function addKeyToInput(input, keyCode, code)
     if input.onEnter then input.onEnter(input) end
   elseif code == 15 and input.nextInput then -- Tab
     input.nextInput.focused = true
-    input.nextInput.draw(input.nextInput)
+    input.nextInput:draw()
     input.focused = false
-    input.draw(input)
+    input:draw()
   elseif char(keyCode):match("[%w]") or GUI.KEYBOARD_CHARS:match(char(keyCode)) then
     if setInputValueTo(
         sub(input.value, 1, input.cursor - 1) .. char(keyCode) .. sub(input.value, input.cursor), input) then
@@ -743,8 +861,6 @@ local function addKeyToInput(input, keyCode, code)
 end
 
 local function inputEventHandler(input, ...)
-  if input.disabled then return end -- Ignore event handling for disabled inputs
-
   local event = select(1, ...)
   if event == "touch" then
     -- Check bounds for touch
@@ -752,7 +868,7 @@ local function inputEventHandler(input, ...)
     if x < input.x or x > input.x + input.width or
        y < input.y or y > input.y + input.height then
         input.focused = false
-        input.draw(input)
+        input:draw()
         return
     end
 
@@ -764,12 +880,12 @@ local function inputEventHandler(input, ...)
 
     if input.onClick then -- Call onclick function
       input.onClick(input, ...) end
-    input.draw(input)
+    input:draw()
   elseif event == "key_down" and input.focused then
     addKeyToInput(input, select(3, ...), select(4, ...))
 
     if input.onInput then input.onInput(input, ...) end
-    input.draw(input)
+    input:draw()
   elseif event == "clipboard" and input.focused then -- TODO respect cursor
     if setInputValueTo(
         sub(input.value, 1, input.cursor - 1) .. select(3, ...) .. sub(input.value, input.cursor), input) then
@@ -778,14 +894,14 @@ local function inputEventHandler(input, ...)
       limitCursor(input)
       
       if input.onPaste then input.onPaste(input, ...) end
-      input.draw(input)
+      input:draw()
     end
   end
 end
 
 -- Input cursor animation (Just need to draw)
 local function inputAnimation(input, percentDone, animation)
-  input.draw(input) -- Update appearance
+  input:draw() -- Update appearance
 end
 
 local function drawInput(input)
@@ -924,7 +1040,7 @@ local function drawProgressIndicator(indicator)
 end
 
 local function progressIndicatorAnimation(indicator, percentDone, animation)
-  indicator.draw(indicator)
+  indicator:draw()
   screen.setForeground(indicator.activeColor1)
 
   if indicator.cycle < indicator.width / 2 then -- No cycling back to beginning
@@ -1013,6 +1129,7 @@ function GUI.createProgressBar(x, y, width, color, activeColor, value, showValue
 end
 
 
+
 -- Color Picker (Basic OC palette) --
 ------------------------------------------------
 
@@ -1061,7 +1178,7 @@ do
 end
 
 local function drawPicker(picker)
-  colorPickerContainer.draw(colorPickerContainer)
+  colorPickerContainer:draw()
 end
 
 local function pickerEventHandler(picker, ...)
@@ -1096,8 +1213,6 @@ end
 -- Terminal --
 ------------------------------------------------
 local function terminalEventHandler(terminal, ...)
-  if terminal.disabled then return end -- Ignore event handling for disabled terminals
-
   local event = select(1, ...)
   if event == "touch" then
     -- Check bounds for touch
