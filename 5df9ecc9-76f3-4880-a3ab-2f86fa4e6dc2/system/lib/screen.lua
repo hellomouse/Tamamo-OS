@@ -732,6 +732,8 @@ end
 function drawText(x, y, string, alpha, blendBg)
   x, y = floor(x), floor(y)
 
+  if y < 1 or y > bufferHeight then return end
+
   -- Save current colors
   local currentFgSave, currentBgSave = currentFg, currentBg
   local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
