@@ -2,6 +2,7 @@
 local component = require("component")
 local unicode = require("unicode")
 local color = require("color")
+local format = require("format")
 
 local gpu = component.gpu
 
@@ -32,6 +33,8 @@ local floor = math.floor
 local len = unicode.len
 local min = math.min
 local max = math.max
+local abs = math.abs
+local sqrt = math.sqrt
 
 -- Constants
 local fillIfAreaIsGreaterThan = 40
@@ -361,14 +364,22 @@ function update(force)
   local t -- Temp variable
   local setCounter = 0
   local fillCounter = 1
+  local currBg, currFg
 
   for bgcolor, group1 in pairs(colorChanges) do
-    GPUsetBackground(absColor(bgcolor), bgcolor < 0)
+    if bgcolor ~= currBg then
+      GPUsetBackground(absColor(bgcolor), bgcolor < 0)
+      currBg = bgcolor
+    end
+
     for fgcolor, group2 in pairs(group1) do
       -- In the event a color is just spaces there is no need to
       -- do a foreground call
       if #group2 == 1 and (group2[1] == "⠀" or group2[1] == " ") then -- Do nothing
-      else GPUsetForeground(absColor(fgcolor), fgcolor < 0) end
+      elseif currFg ~= fgcolor then
+        GPUsetForeground(absColor(fgcolor), fgcolor < 0)
+        currFg = fgcolor
+      end
 
       for i = 1, #group2 do
         t = group2[i]
@@ -633,12 +644,11 @@ local function setAdaptive(x, y, cfg, cbg, alpha, blendBg, blendBgalpha, symbol)
   if symbol == " " or symbol == "⠀" then -- 2nd is unicode 0x2800, not regular space
     setForeground(color.blend(fg, cbg, 1 - alpha))
     return sym
-  elseif symbol == "█" then  -- Full block doesn't blend with current background
+  elseif symbol == "█" or symbol == "⣿" then  -- Full block doesn't blend with current background
     return symbol
   end
   return symbol -- Otherwise fill with the symbol
 end
-
 
 -- Screen drawing methods --
 -- Important note: alpha is equal to alpha value, meaning 1 = visible, 0 = invisible --
@@ -647,6 +657,7 @@ end
 -- Draw a rectangle (border) with current bg and fg colors,
 -- with optional alpha
 function drawRectOutline(x, y, w, h, alpha)
+  if alpha == 0 then return false end -- No alpha no render
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
   if alpha == nil then alpha = 1 end
@@ -696,6 +707,7 @@ end
 -- with optional alpha. Because of alpha
 -- we have to reimplement fill code
 function drawRect(x, y, w, h, alpha)
+  if alpha == 0 then return false end -- No alpha no render
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
   if alpha == nil then alpha = 1 end
@@ -730,6 +742,7 @@ end
 -- If blendBg is enabled, the background will be selected to try
 -- to camouflage itself with the existing buffer
 function drawText(x, y, string, alpha, blendBg)
+  if alpha == 0 then return false end -- No alpha no render
   x, y = floor(x), floor(y)
 
   if y < 1 or y > bufferHeight then return end
@@ -759,9 +772,11 @@ function drawText(x, y, string, alpha, blendBg)
 end
 
 function drawEllipseOutline()
+  -- TODO
 end
 
 function drawEllipse(x, y, a, b, alpha)
+  if alpha == 0 then return false end -- No alpha no render
   x, y, a, b = floor(x), floor(y), floor(a), floor(b)
 
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
@@ -800,10 +815,109 @@ function drawEllipse(x, y, a, b, alpha)
   return true
 end
 
+-- Sub ellipse pixel helper function
+-- Returns 0 if outside ellipse else 1
+function subEllipseHelper(x1, y1, x, y, a2, b2, onEllipse) -- a2 = a^2, b2 = b^2
+  local dis = (x1 - x) * (x1 - x) / a2 + (y1 - y) * (y1 - y) / b2
+
+  -- If we're just doing an outline check distance = 1 (on ellipse)
+  if onEllipse then
+    -- 0.014 is estimate, larger = thicker but less breaks
+    if abs(sqrt(dis) - 1) <= 0.014 then return 1 end
+    return 0
+  end
+
+  if dis > 1 then return 0 end
+  return 1
+end
+
+function subEllipseTemplate(x, y, a, b, alpha, justOutline)
+  if alpha == 0 then return false end -- No alpha no render
+  x, y, a, b = floor(x), floor(y), floor(a), floor(b)
+
+  if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
+  if alpha == nil then alpha = 1 end
+
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, a, "number")
+  checkArg(4, b, "number")
+  checkArg(5, alpha, "number")
+
+  local a2, b2 = a * a, b * b -- Store the axis squared
+  local subChar, charToDraw
+
+  -- Temp vars
+  local currentFgSave, currentBgSave
+  local cfg, cbg
+
+  -- Directly fill if area is large enough
+  for x1 = x - a, x + a - 1 do
+  for y1 = y - b, y + b - 1 do
+    if x1 > bufferWidth then goto continue end
+    if y1 > bufferHeight then break end
+    if x1 < 1 then goto continue end
+    if y1 < 1 then goto continue end
+
+    -- Iterate "subpixels"
+    subChar = format.getBrailleChar(
+      subEllipseHelper(x1, y1, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1 + 0.5, y1, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1, y1 + 0.25, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1 + 0.5, y1 + 0.25, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1, y1 + 0.5, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1 + 0.5, y1 + 0.5, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1, y1 + 0.75, x, y, a2, b2, justOutline),
+      subEllipseHelper(x1 + 0.5, y1 + 0.75, x, y, a2, b2, justOutline)
+    )
+    if subChar == "⠀" then goto continue end -- Skip empty braille
+    
+    -- Same as drawText but without the checks
+    currentFgSave, currentBgSave = currentFg, currentBg
+    cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
+
+    if subChar == "⣿" then
+      -- Filler in the middle of the ellipse, we can fill with a space
+      -- and use default set adaptive behaviour
+
+      subChar = " "
+      currentBg = currentFg
+      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar))
+    else
+      -- Side bars should have the background equal to the blended value
+      -- However since braille is filled with foreground we swap bg and fg
+      -- and set the bg to whatever the current bg is at that value
+
+      charToDraw = setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar)
+      currentFg = currentBg
+      currentBg = getRaw(x1, y1)
+      set(x1, y1, charToDraw)
+    end
+    
+    currentBg = currentBgSave
+    currentFg = currentFgSave
+    ::continue::
+  end end
+  return true
+end
+
+function drawEllipseThin(x, y, a, b, alpha)
+  return subEllipseTemplate(x, y, a, b, alpha, false)
+end
+
+function drawEllipseOutlineThin(x, y, a, b, alpha)
+  return subEllipseTemplate(x, y, a, b, alpha, true)
+end
+
+function drawBeizerCurve(points, alpha)
+  -- TODO
+end
+
 -- Draw a line (Using braille characters)
 -- from 1 point to another, optionally with alpha
 -- Optional line character, which will override ALL line characters
 function drawLineThin(x1, y1, x2, y2, alpha, lineChar)
+  if alpha == 0 then return false end -- No alpha no render
   x1, y1, x2, y2 = floor(x1), floor(y1), floor(x2), floor(y2)
   if alpha == nil then alpha = 1 end
 
@@ -826,7 +940,6 @@ function drawLineThin(x1, y1, x2, y2, alpha, lineChar)
 
       setAdaptive(x, y1, cfg, false, alpha, true, false)
       set(x, y1, lineChar, false, true)
-
       ::continue::
     end
     return true
@@ -841,7 +954,6 @@ function drawLineThin(x1, y1, x2, y2, alpha, lineChar)
 
       setAdaptive(x1, y, cfg, false, alpha, true, false)
       set(x1, y, lineChar, false, true)
-
       ::continue::
     end
     return true
@@ -886,5 +998,8 @@ return {
   setDrawingBound = setDrawingBound,
   getDrawingBound = getDrawingBound,
   resetDrawingBound = resetDrawingBound,
-  resetPalette = resetPalette
+  resetPalette = resetPalette,
+  drawEllipseThin = drawEllipseThin,
+  drawEllipseOutlineThin = drawEllipseOutlineThin,
+  drawBeizerCurve = drawBeizerCurve
 }

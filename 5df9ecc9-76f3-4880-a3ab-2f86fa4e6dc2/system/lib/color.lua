@@ -67,7 +67,7 @@ function api.getProminentColor(fg, bg, symbol)
   local val = byte(symbol)
   
   -- Unicode block characters (Common ones)
-  if symbol == "█" then
+  if symbol == "█" or symbol == "⣿" then
     return fg
   elseif symbol == " " then
     return bg

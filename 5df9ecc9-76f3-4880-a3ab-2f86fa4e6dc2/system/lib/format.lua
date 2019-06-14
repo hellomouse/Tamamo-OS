@@ -3,13 +3,16 @@ local format = {}
 
 -- Requires --
 local unicode = require("unicode")
+local bit32 = require("bit32")
 
 -- Optimization for lua
 local sub = unicode.sub
 local len = unicode.len
+local uchar = unicode.char
 local insert = table.insert
 local concat = table.concat
 local find = string.find
+local bor = bit32.bor
 
 -- Trim the string to the length
 function format.trimLength(text, length, suffix)
@@ -62,6 +65,18 @@ function format.wrap(text, width, returnAsTable)
 
   -- Return the wrapped string and number of new lines
   return concat(returned, "\n"), #returned
+end
+
+-- Get braille char from coordinates
+-- Note that a, b, ... are not ordered like on the wiki, rather they
+-- read directly left -> right top -> bottom
+-- Ie:
+-- a b
+-- c d
+-- e f
+-- g h
+function format.getBrailleChar(a, b, c, d, e, f, g, h)
+  return uchar(bor(0x2800, a + 8 * b + 2 * c + 16 * d + 4 * e + 32 * f + 64 * g + 128 * h))
 end
 
 return format

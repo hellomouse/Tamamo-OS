@@ -1,14 +1,5 @@
 lib/core/boot.lua - boot sequence
 
-https://raw.githubusercontent.com/Shuudoushi/SecureOS/release/installer.lua
-
-cd src
-lua boot.lua /path/to/my/emulated/machine_a
-
-https://ocdoc.cil.li/api:computer
-
-https://oc.cil.li/topic/1801-kestrelos-safe-and-powerful-windows-alike-os/?tab=comments#comment-8311 
-
 
 http://www.lua.org/pil/contents.html
 https://oc.cil.li/topic/864-chenthread-image-format-high-quality-images-on-opencomputers/
@@ -20,8 +11,7 @@ https://ocdoc.cil.li/component:gpu
 https://github.com/IgorTimofeev/MineOS/wiki/Component-API 
 https://oc.cil.li/topic/421-tar-for-opencomputers/ 
 https://ocdoc.cil.li/api:thread
-https://www.reddit.com/r/feedthebeast/comments/4535b8/draconic_evolution_reactor_for_science/ 
-https://oc.cil.li/topic/1010-how-to-craft-items-in-ae2-network/
+
 
 Boot options 
 - Disk options 
@@ -29,26 +19,6 @@ Boot options
 - Shutdown
 - Back 
 
-game of life
-
-https://oc.cil.li/topic/987-i-got-so-bored-i-made-an-ime-with-a-very-basic-text-editor-that-doesnt-even-save-and-load/
-kanji input / chinese
-
-tape looper 
-https://oc.cil.li/topic/784-computronics-tape-drive-looper/
-
-https://github.com/TetraSource/OC-programs/wiki/Bundle
-
-
-TPM - tamamo package manager (thx asdfbot)
-
-
-clone hard drive
-
-https://oc.cil.li/topic/443-comprehensive-unicode-reference-images/
-
-
-tablet as build wand 
 
 Permissions like in android 
 - App would like to access OS GUI container
@@ -59,31 +29,9 @@ check find in wrap works with unicode chars
 sys internal screen update loop
 test the moveForward and shit 
 
-https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
-https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
-
-https://oc.cil.li/topic/1851-oetf-16-open-extensible-firmware-interface/
-https://github.com/Adorable-Catgirl/Zorya-BIOS
-
-https://www.reddit.com/r/loadingicon/comments/bwdx14/oc_a_roll_of_the_metaphysical_dice/
-
-https://github.com/dunstad/roboserver
-https://oc.cil.li/topic/1672-fishing-program/#comment-7668
-
-drone player transport
-
-autocraft computer parts 
-
-http://www.computercraft.info/forums2/index.php?/topic/29809-workspace-desktop-grid-multitasking-in-computercraft/
-http://www.computercraft.info/forums2/index.php?/forum/33-pocket-programs/
-http://www.computercraft.info/forums2/index.php?/forum/21-turtle-programs/
-
-http://www.computercraft.info/forums2/index.php?/topic/26848-3d-rendering-api-v051-updated-way-better-erformance-new-functionalities/
-
-
-banner editor
 
 noise api
+
 
 
 Sectionlike structure of the man program
@@ -103,18 +51,22 @@ gui:
 list (tabs / vertical)
 table 
 dropdown box 
-window
 file selector 
 code view 
 chart
 tree list
 color selector 
 textarea 
+popup
+component selector
 
-replace if nil to adding "nil" in checkArg
+alert()
 
 
-replace the .x > and shit with isOutside
+
+more image formats
+
+"workspaces" that can be created to handle events
 
 
 disabled elements more apparent
@@ -122,14 +74,10 @@ disabled elements more apparent
 make sure copy / fill and shit respect bounds in screen
 
 
-perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
-dont change foreground if current foreground is same
-
 validate width and shit < 0 and other checks not just checkarg
 progressbar is showval then must define textcolor
 
 
-note that x scrollbars are smaller than y scrollbars due to 2x char height
 
 
 color pciker - needs some sort of z-indexing
@@ -138,14 +86,15 @@ color pciker - needs some sort of z-indexing
 
 color picker should be seperate GUI object adedd
 
-https://github.com/IgorTimofeev/AdvancedLua/blob/master/README.md
-https://youtu.be/dmlt1883ypE?t=16
+
+
+perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
+
+
+
 
 save some colors for system 
 
-
-ssh and ftp
-https://gitlab.com/polyzium/ngsh
 
 virtual components 
 
@@ -178,19 +127,18 @@ make base64 lib optional
 optimize wiht https://oc.cil.li/topic/243-memory-management/
 
 
-gui
-- file browser 
-- popup
--palette selector 
-- component selector
-
 
 screen api 
 - get pixel at location
-- copy from MineOS
+- x, y- > index 
+- index -> x, y
 
 
-semipixel ellipse, semipixel curve
+draw rectangle?
+
+semipixel ellipse outline needs to be better 
+
+ semipixel curve
 regular line
 
 
@@ -198,18 +146,21 @@ image masking - graphics object!
 
 
 
-screensaver: https://chrome.google.com/webstore/detail/lagom/kmklifknlepgmbbigahhphncmgkppbjb?hl=en
 
-
-scren optimize with fill and rectangle finding
-- try to fill with curernt bg color first then try others
+optimizations that don't work 
 - vertical drawing
+- rectangle finding 
+- seralizing coordinates into strings
+- try to fill with curernt bg color first then try others
+- try to fill with current fg
+
+
+note that x scrollbars are smaller than y scrollbars due to 2x char height
+
 
 
 https://www.zerochan.net/1727073 - izuna citation
 
-https://oc.cil.li/topic/793-proximity-door-update-v13-nothing-says-style-like-an-automatic-door/
-https://oc.cil.li/topic/1470-mekanism-hud-with-openglasses/
 
 https://oc.cil.li/topic/1415-pseudo-big-font-library/
 
@@ -222,8 +173,6 @@ make boot work only if there is a gpu
 
 
 
-drawLimits 
-
 instead of sorting by color with table use fancy shit
 - save changes in the changes buffer - for first 128 indexes add to w * h for color storage
 - then switch to used indexes
@@ -233,36 +182,7 @@ instead of sorting by color with table use fancy shit
 terminal backgrounds!
 
 
-
-
 write tests
 
 - component browser
 https://oc.cil.li/topic/835-cmb-component-methods-browser/
-
-geo-explorer program - hologram / keys to move around
-
--videos - https://git.asie.pl/asie-minecraft/Nadeshicodec
-
-audio drones
-    https://oc.cil.li/topic/1758-noteblock-studio-player-for-computronics-sound-cards/
-
-music http://packages.noahtg.com/pianoNotesArray.php
-
-
-https://github.com/OpenPrograms/Wuerfel_21-OC-Toolkit
-https://oc.cil.li/topic/116-wuerfel_21s-oc-toolkit-everything-and-more/
-https://github.com/IgorTimofeev/MineOS/blob/5b2e4b2a11bb2c1d2831e7e07c444ccf80b66b56/Applications/Settings.app/Modules/0_Screen/Main.lua
-
-
-3d print building things
-- 3D printer print
-
-draconic reactor controller 
-- https://tenyx.de/draconic_control/advanced.html#simulator
-- https://tenyx.de/draconic_control/
-- https://pastebin.com/WduATMTF (https://oc.cil.li/topic/1310-draconic-reactor-emulator/)
-
-instruction program - write instructions
-
-IC2 reactor controller
