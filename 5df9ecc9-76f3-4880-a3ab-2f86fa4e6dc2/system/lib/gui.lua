@@ -61,6 +61,15 @@ local min = math.min
 local max = math.max
 local random = math.random
 
+-- Helper function
+local function isOutside(guiObj, x, y) -- is x, y outside of guiobj bounds
+  if x < guiObj.x or x > guiObj.x + guiObj.width or
+     y < guiObj.y or y > guiObj.y + guiObj.height then
+    return true
+  end
+  return false
+end
+
 -- Global cursor blink update
 -- TODO move this to some animation object
 thread.create(function()
@@ -112,6 +121,23 @@ function GUIContainer:addChild(guiObject, index)
   guiObject.localX = guiObject.x
   guiObject.localY = guiObject.y
   guiObject.parent = self
+
+  -- GUIContainers must have child flag set to true
+  if guiObject.type == "GUIContainer" then
+    guiObject.isChild = true
+  end
+
+  -- Identify the first parent container
+  local _tempobj = self
+  while _tempobj.parent ~= nil do
+    _tempobj = _tempobj.parent
+  end
+
+  -- Verify the parent container is not a child element (not added)
+  -- and is a GUIContainer
+  if not _tempobj.isChild and _tempobj.type == "GUIContainer" then 
+    guiObject.firstParent = _tempobj 
+  end
 
   -- Convert local coords to global
   guiObject.x = self.x + guiObject.x
@@ -234,7 +260,8 @@ function GUIObject:eventHandler(...)
 end
 
 function GUIObject:draw()
-  if not self.parent then return end -- Must have parent container to render
+  -- TODO fix this iteration shit with firstParent
+  if not self.parent or (self.parent.isChild and not self.firstParent) then return end -- Must have parent container to render
   self.parent:draw(self)
 end
 
@@ -556,10 +583,7 @@ local function switchEventHandler(switch, ...)
   if select(1, ...) == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
-    if x < switch.x or x > switch.x + switch.width or
-       y < switch.y or y > switch.y + switch.height then
-        return
-    end
+    if isOutside(switch, x, y) then return end
 
     -- Invert the toggled boolean
     switch.toggled = not switch.toggled
@@ -617,10 +641,7 @@ local function checkboxEventHandler(checkbox, ...)
   if select(1, ...) == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
-    if x < checkbox.x or x > checkbox.x + checkbox.width or
-       y < checkbox.y or y > checkbox.y + checkbox.height then
-        return
-    end
+    if isOutside(checkbox, x, y) then return end
 
     -- Invert the toggled boolean
     checkbox.toggled = not checkbox.toggled
@@ -719,10 +740,7 @@ local function buttonEventHandler(button, ...)
   if etype == "touch" or etype == "walk" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
-    if x < button.x or x > button.x + button.width or
-       y < button.y or y > button.y + button.height then
-        return
-    end
+    if isOutside(button, x, y) then return end
 
     -- In switch mode, invert the pressed boolean, otherwise
     -- set it equal to true
@@ -826,10 +844,7 @@ local function sliderEventHandler(slider, ...)
   if etype == "touch" or etype == "drag" then
     -- Check bounds for event
     local x, y = select(3, ...), select(4, ...)
-    if x < slider.x or x > slider.x + slider.width or
-       y < slider.y or y > slider.y + slider.height then
-        return
-    end
+    if isOutside(slider, x, y) then return end
 
     local oldval = slider.val
 
@@ -862,11 +877,11 @@ function GUI.createSlider(x, y, width, baseColor, sliderColor, knobColor, textCo
   checkArg(9, max, "number")
   checkArg(10, val, "number")
 
-  if showVal ~= nil then checkArg(11, showVal, "boolean") end
-  if showMinMax ~= nil then checkArg(12, showMinMax, "boolean") end
-  if increment ~= nil then checkArg(13, increment, "number") end
-  if prefix ~= nil then checkArg(14, prefix, "string") end
-  if suffix ~= nil then checkArg(15, suffix, "string") end
+  checkArg(11, showVal, "boolean", "nil")
+  checkArg(12, showMinMax, "boolean", "nil")
+  checkArg(13, increment, "number", "nil")
+  checkArg(14, prefix, "string", "nil")
+  checkArg(15, suffix, "string", "nil")
 
   -- Increment must < min - max + 1 and min < max
   if min >= max then error("min must be less than max (" .. min .. " /< " .. max .. " in GUI.createSlider)") end
@@ -997,8 +1012,7 @@ local function inputEventHandler(input, ...)
   if event == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
-    if x < input.x or x > input.x + input.width or
-       y < input.y or y > input.y + input.height then
+    if isOutside(input, x, y) then
         input.focused = false
         input:draw()
         return
@@ -1471,11 +1485,7 @@ local function terminalEventHandler(terminal, ...)
   if event == "touch" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
-    if x < terminal.x or x > terminal.x + terminal.width or
-       y < terminal.y or y > terminal.y + terminal.height then
-        input.focused = false
-        return
-    end
+    if isOutside(terminal, x, y) then return end
 
     if terminal.onClick then -- Call onclick function
       terminal.onClick(terminal, ...) end
