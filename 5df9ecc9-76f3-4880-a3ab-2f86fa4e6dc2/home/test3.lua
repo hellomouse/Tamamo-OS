@@ -2,7 +2,8 @@ local gui = require("gui")
 local event = require("event")
 local image = require("image")
 
-local container = gui.createContainer(1, 1, 70, 50)
+local container = gui.createContainer(1, 1, 140, 50, true, true)
+
 
 local function doShit(eventID, ...)
     if eventID then -- can be nil if no event was pulled for some time
@@ -87,11 +88,11 @@ p.addChild(gui.createInput(1, 1, 30, 3, 0x333333, 0xFFFFFF, 0x555555, 0xFFFFFF, 
 -- test 
 local GUI = gui
 local color = require("color")
-local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1)
-colorPickerContainer.overrideBound = true
+--local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1)
+--colorPickerContainer.overrideBound = true
 
 
-container:addChild(GUI.createColorPicker(30, 15, 10, 20, "HI", 0x0))
+--container:addChild(GUI.createColorPicker(30, 15, 10, 20, "HI", 0x0))
 
 local asd = gui.createTextBox(50, 40, "this is a test\ndoes this text wrap around long lines still or no",0xFFFFFF,  10)
 container:addChild(asd)
@@ -103,6 +104,16 @@ container:addChild(bar)
 bar.setValue(0.2)
 
 container:addChild(gui.createSlider(10, 47, 20, 0x333333, 0xFF0000, 0xFFFFFF, 0xFFFFFF, 10, 50, 30, true, true, 2, "BWBellairs "))
+
+container:addChild(gui.createCheckbox(90, 30, "test", 0x333333, 0xFF0000, 0xFFFFFF))
+
+container:addChild(gui.createScrollBar(90, 10, 10, true, 0x333333, 0xFF0000))
+container:addChild(gui.createScrollBar(90, 10, 20, false, 0x333333, 0xFF0000))
+
+
+local scrollt = gui.createPanel(90, 1, 25, 20, 0x111111, 1, 1, true, true, true, 30, 100)
+scrollt.addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. Ааааа, аААаа! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear!", 0xFFFFFF, 30))
+container:addChild(scrollt)
 
 container:draw()
 

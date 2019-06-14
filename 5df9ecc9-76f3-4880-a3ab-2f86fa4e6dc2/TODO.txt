@@ -74,7 +74,16 @@ drone player transport
 
 autocraft computer parts 
 
+http://www.computercraft.info/forums2/index.php?/topic/29809-workspace-desktop-grid-multitasking-in-computercraft/
+http://www.computercraft.info/forums2/index.php?/forum/33-pocket-programs/
+http://www.computercraft.info/forums2/index.php?/forum/21-turtle-programs/
 
+http://www.computercraft.info/forums2/index.php?/topic/26848-3d-rendering-api-v051-updated-way-better-erformance-new-functionalities/
+
+
+banner editor
+
+noise api
 
 
 Sectionlike structure of the man program
@@ -84,37 +93,43 @@ gui idea
 - div:addChild add element
 - tab class - handles events
 
-- solution: redraw parent any elements that overlap with guiobject instead of .draw for slef update
-
 rewrite animation threads to use 1 thread to optimize memory?
 - calculate itming based on thread main tick iteration to get number of ticks before counting, 
  - iterates all active animations
+
 
 
 gui: 
 list (tabs / vertical)
 table 
 dropdown box 
+window
 file selector 
 code view 
-seperate checkbox - less lag
 chart
+tree list
+color selector 
+textarea 
 
-button more types of events to deal with
+replace if nil to adding "nil" in checkArg
+
+
+replace the .x > and shit with isOutside
+
 
 disabled elements more apparent
 
+make sure copy / fill and shit respect bounds in screen
+
+
 perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
 dont change foreground if current foreground is same
-
 
 validate width and shit < 0 and other checks not just checkarg
 progressbar is showval then must define textcolor
 
 
-
-no drawing until added to parent
-- objects with animation are drawn regardless if visible or added
+note that x scrollbars are smaller than y scrollbars due to 2x char height
 
 
 color pciker - needs some sort of z-indexing

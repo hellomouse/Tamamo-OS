@@ -3,6 +3,8 @@ local unicode = require("unicode")
 local thread = require("thread")
 local color = require("color")
 local format = require("format")
+local keyboard = require("keyboard")
+local component = require("component")
 
 -- Returned object
 local GUI = {
@@ -35,7 +37,13 @@ local GUI = {
   -- Progress indicator
   PROGRESS_WIDTH = 10,
   PROGRESS_HEIGHT = 1,
-  PROGRESS_DELAY = 0.05
+  PROGRESS_DELAY = 0.05,
+
+  -- Scroll bar
+  SCROLL_BAR_FG_COLOR = 0xAAAAAA,
+  SCROLL_BAR_BG_COLOR = 0x333333, -- TODO replace with system color palette
+  SCROLL_BAR_ERROR_MARGIN = 2,
+  SCROLL_BAR_REDRAW_EVERY_N_SCROLLS = 2, -- Redraw every n scroll events to avoid lag
 }
 
 -- Optimization for lua
@@ -51,6 +59,7 @@ local floor = math.floor
 local ceil = math.ceil
 local min = math.min
 local max = math.max
+local random = math.random
 
 -- Global cursor blink update
 -- TODO move this to some animation object
@@ -80,18 +89,15 @@ end
 GUIContainer = {}
 GUIContainer.__index = GUIContainer
 
-function GUIContainer:create(x, y, width, height, scrollable, autoScrollX, autoScrollY)
+function GUIContainer:create(x, y, width, height)
   local obj = {}                  -- New object
   setmetatable(obj, GUIContainer) -- make GUIContainer handle lookup
 
   obj.x, obj.y, obj.width, obj.height = x, y, width, height
-  obj.scrollable = scrollable
-  obj.autoScrollX = autoScrollX
-  obj.autoScrollY = autoScrollY
-  obj.scrollX = 0
-  obj.scrollY = 0
   obj.children = {}
+  obj.isChild = false
   obj.type = "GUIContainer"
+
   return obj
 end
 
@@ -110,19 +116,6 @@ function GUIContainer:addChild(guiObject, index)
   -- Convert local coords to global
   guiObject.x = self.x + guiObject.x
   guiObject.y = self.y + guiObject.y
-
-  -- Wrap draw function to respect parent boundary
-  if guiObject.draw then
-    local tempdraw = guiObject.draw
-    guiObject.draw = function(obj)
-      obj.parent:setBounds() -- Limit bounds by the parent
-
-      -- Update local coordinates
-      obj.localX = obj.x - obj.parent.x
-      obj.localY = obj.y - obj.parent.y
-      tempdraw(obj)
-    end
-  end
 
   -- Set index properties
   guiObject.getIndex = function() return self:findChild(guiObject) end
@@ -148,23 +141,47 @@ function GUIContainer:removeChild(index)
   remove(self.children, index)
 end
 
-function GUIContainer:draw()
-  -- TODO scrollbars and shit
-  screen.setDrawingBound(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1, true)
+function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to update appearance and offset
+  -- If child is not nil assert that its parent is self
+  if child ~= nil and child.parent ~= self then
+    error("Child must be a child of this specific GUI container when passed in :draw()")
+  end
+
+  offsetX = offsetX or 0
+  offsetY = offsetY or 0
+
+  -- If container is a child of another but has no parent then don't render
+  if self.isChild and not self.parent then return end
+
+  screen.setDrawingBound(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1)
   self.boundX1, self.boundY1, self.boundX2, self.boundY2 = screen.getDrawingBound()
 
   for i = 1, #self.children do
     -- Don't render hidden elements
     if self.children[i].hidden then goto continue end
 
+    -- If only updating child only update elements that overlap with it
+    if child == nil or 
+     (child ~= nil and child.x < self.children[i].x + self.children[i].width and
+      child.x + child.width > self.children[i].x and
+      child.y < self.children[i].y + self.children[i].height and
+      child.y + child.height > self.children[i].y) then -- Do nothing since overlap and valid
+    else goto continue end
+
     -- GUI Containers already set their drawing bounds, otherwise
     -- we need to restrict drawing bounds for them
     if self.children[i].type == "GUIContainer" then
-      self.children[i]:draw()
+      self.children[i]:draw(nil, offsetX, offsetY)
     else
+      self.children[i].x = self.children[i].x + offsetX
+      self.children[i].y = self.children[i].y + offsetY
+
       screen.setDrawingBound(self.children[i].x, self.children[i].y, 
-        self.children[i].x + self.children[i].width, self.children[i].y + self.children[i].height)
-      self.children[i]:draw()
+        self.children[i].x + self.children[i].width - 1, self.children[i].y + self.children[i].height - 1, true)
+      self.children[i]:drawObject()
+
+      self.children[i].x = self.children[i].x - offsetX
+      self.children[i].y = self.children[i].y - offsetY
     end
 
     screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
@@ -172,7 +189,7 @@ function GUIContainer:draw()
   end
 end
 
-function GUIContainer:setBounds()
+function GUIContainer:resetBounds()
   screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
 end
 
@@ -185,8 +202,8 @@ function GUIContainer:eventHandler(...)
 end
 
 -- Wrapper to create a GUIContainer --
-function GUI.createContainer(x, y, width, height, scrollable, autoScrollX, autoScrollY)
-  return GUIContainer:create(x, y, width, height, scrollable, autoScrollX, autoScrollY)
+function GUI.createContainer(x, y, width, height)
+  return GUIContainer:create(x, y, width, height)
 end
 
 
@@ -214,6 +231,11 @@ end
 
 function GUIObject:eventHandler(...)
   -- Default: no event handler
+end
+
+function GUIObject:draw()
+  if not self.parent then return end -- Must have parent container to render
+  self.parent:draw(self)
 end
 
 
@@ -266,15 +288,37 @@ end
 -- Panel --
 ------------------------------------------------
 local function drawPanel(panel)
-  local bx1, by1, bx2, by2
+  local bx1, by1, bx2, by2 = screen.getDrawingBound()
   if panel.overrideBound then
     screen.setDrawingBound(panel.x, panel.y, panel.x + panel.width - 1, panel.y + panel.height - 1, false)
-    bx1, by1, bx2, by2 = screen.getDrawingBound()
   end
+
+  local dx, dy
+  if panel.xScrollbar then dx = -panel.xScrollbar.value end
+  if panel.yScrollbar then dy = -panel.yScrollbar.value end
 
   screen.setBackground(panel.color)
   screen.drawRect(panel.x, panel.y, panel.width, panel.height, panel.bgAlpha)
-  panel.container:draw()
+  panel.container:draw(nil, dx, dy)
+
+  screen.setDrawingBound(panel.x, panel.y, panel.x + panel.width - 1, panel.y + panel.height - 1)
+
+  -- Render any scrollbars it might have
+  -- Auto hide scrollbars if scrollX / scrollY is set to "auto" and size < width / height
+  if panel.xScrollbar then 
+    if scrollX == "auto" and panel.width >= panel.xScrollbar.totalScrollSize then 
+      panel.xScrollbar.hidden = true
+    else panel.xScrollbar.hidden = false end
+
+    panel.xScrollbar:drawObject() 
+  end
+  if panel.yScrollbar then
+    if scrollY == "auto" and panel.height >= panel.yScrollbar.totalScrollSize then 
+      panel.yScrollbar.hidden = true
+    else panel.yScrollbar.hidden = false end
+
+    panel.yScrollbar:drawObject() 
+  end
 
   -- Reset original bounds
   screen.setDrawingBound(bx1, by1, bx2, by2)
@@ -282,9 +326,11 @@ end
 
 local function panelEventHandler(panel, ...)
   panel.container:eventHandler(...)
+  if panel.xScrollbar then panel.xScrollbar:eventHandler(...) end
+  if panel.yScrollbar then panel.yScrollbar:eventHandler(...) end
 end
 
-function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, overrideBound)
+function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, overrideBound, scrollX, scrollY, scrollWidth, scrollHeight)
   checkArg(1, x, "number")
   checkArg(2, y, "number")
   checkArg(3, width, "number")
@@ -302,11 +348,36 @@ function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, override
   -- Basic Properties --
   panel.color = bgColor
   panel.type = "panel"
-  panel.draw = drawPanel
+  panel.drawObject = drawPanel
+
+  -- TODO Assert scrollx / scrolly auto, scrollwidth/height exists when
+
+  -- Scroll bars
+  panel.scrollX = scrollX -- true, false or "auto"
+  panel.scrollY = scrollY -- true, false or "auto"
 
   -- Y margin is halved since cells are 2x taller than wide
   panel.container = GUIContainer:create(x + margin, ceil(y + margin / 2), width - margin * 2, height - margin)
+  panel.container.isChild = true
+  panel.container.parent = panel
   panel.overrideBound = overrideBound
+
+  -- Scroll bars aren't accessible as children elements
+  if scrollX then
+    local xbar = GUI.createScrollBar(x + 2, y + height, width - 3, false, GUI.SCROLL_BAR_BG_COLOR, GUI.SCROLL_BAR_FG_COLOR)
+    xbar.parent = panel
+    xbar.totalScrollSize = max(scrollWidth, width)
+    panel.xScrollbar = xbar
+  end
+  if scrollY then
+    local ybar = GUI.createScrollBar(x + width - 1, y + 2, height - 2, true, GUI.SCROLL_BAR_BG_COLOR, GUI.SCROLL_BAR_FG_COLOR)
+    ybar.parent = panel
+    ybar.totalScrollSize = max(scrollHeight, height)
+    panel.yScrollbar = ybar
+  end
+
+  -- Original container x
+  panel._ocx, panel._ocy = panel.container.x, panel.container.y
 
   -- Functions --
   panel.addChild = function(guiObj, index) panel.container:addChild(guiObj, index) end
@@ -328,7 +399,7 @@ function GUI.createImage(x, y, loadedImage)
 
   local img = GUIObject:create(x, y, loadedImage.width, loadedImage.height)
   img.type = "image"
-  img.draw = drawImage
+  img.drawObject = drawImage
   img.loaded = loadedImage
 
   return img
@@ -381,7 +452,7 @@ function GUI.createTextBox(x, y, text, textColor, width, height)
 
   -- Additional textbox properties --
   textbox.type = "textbox"
-  textbox.draw = drawTextBox
+  textbox.drawObject = drawTextBox
   textbox.textWidth = textWidth
   textbox.textHeight = textHeight
 
@@ -443,7 +514,7 @@ function GUI.createLabel(x, y, text, textColor, width, height, align)
 
   -- Additional label properties --
   label.type = "label"
-  label.draw = drawLabel
+  label.drawObject = drawLabel
   label.textWidth = textWidth
   label.textHeight = textHeight
 
@@ -517,7 +588,7 @@ function GUI.createSwitch(x, y, inactiveColor, activeColor, cursorColor)
   switch.type = "switch"
   switch.eventHandler = switchEventHandler
   switch.onChange = nil
-  switch.draw = drawSwitch
+  switch.drawObject = drawSwitch
   switch.animationdx = 0
   switch.animation = Animation:create(switchAnimation, GUI.BASE_ANIMATION_STEP, switch)
   switch.setState = function(state)
@@ -526,6 +597,66 @@ function GUI.createSwitch(x, y, inactiveColor, activeColor, cursorColor)
   end
 
   return switch
+end
+
+-- Checkboxes --
+------------------------------------------------
+
+-- Checkbox drawing function --
+local function drawCheckbox(checkbox)
+  if checkbox.toggled then screen.setBackground(checkbox.activeColor)
+  else screen.setBackground(checkbox.inactiveColor) end
+
+  screen.drawText(checkbox.x, checkbox.y, "  ")
+  screen.setForeground(checkbox.textColor)
+  screen.drawText(checkbox.x + 3, checkbox.y, checkbox.label, 1, true)
+end
+
+-- Event handler for checkbox, deals only with touch events for now --
+local function checkboxEventHandler(checkbox, ...)
+  if select(1, ...) == "touch" then
+    -- Check bounds for touch
+    local x, y = select(3, ...), select(4, ...)
+    if x < checkbox.x or x > checkbox.x + checkbox.width or
+       y < checkbox.y or y > checkbox.y + checkbox.height then
+        return
+    end
+
+    -- Invert the toggled boolean
+    checkbox.toggled = not checkbox.toggled
+    if checkbox.onChange then -- Call onchange function
+      checkbox.onChange(checkbox, ...) end
+    checkbox:draw()
+  end
+end
+
+function GUI.createCheckbox(x, y, label, inactiveColor, activeColor, textColor)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, label, "string")
+  checkArg(4, inactiveColor, "number")
+  checkArg(5, activeColor, "number")
+  checkArg(6, textColor, "number")
+
+  local checkbox = GUIObject:create(x, y, 3 + len(label), 1)
+  
+  -- Basic Properties --
+  checkbox.inactiveColor, checkbox.activeColor = inactiveColor, activeColor
+  checkbox.textColor = textColor
+  checkbox.label = label
+
+  -- Additional checkbox properties --
+  checkbox.toggled = false
+  checkbox.type = "checkbox"
+  checkbox.eventHandler = checkboxEventHandler
+  checkbox.onChange = nil
+  checkbox.drawObject = drawCheckbox
+  checkbox.setState = function(state)
+    checkbox.toggled = state
+    checkbox:draw()
+  end
+
+  return checkbox
 end
 
 -- Buttons --
@@ -584,7 +715,8 @@ end
 
 -- Event handler for button, deals only with touch events for now --
 local function buttonEventHandler(button, ...)
-  if select(1, ...) == "touch" then
+  local etype = select(1, ...)
+  if etype == "touch" or etype == "walk" then
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
     if x < button.x or x > button.x + button.width or
@@ -634,7 +766,7 @@ local function createButton(x, y, width, height, text, buttonColor, textColor, p
   button.type = "button"
   button.eventHandler = buttonEventHandler
   button.onClick = nil
-  button.draw = drawButton
+  button.drawObject = drawButton
   button.framed = isFrame
   button.animation = Animation:create(buttonAnimation, GUI.BASE_ANIMATION_STEP, button)
 
@@ -671,15 +803,15 @@ local function drawSlider(slider)
 
   -- Render the slider colored bar --
   screen.setForeground(slider.baseColor)
-  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("█", slider.sliderWidth))
+  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("━", slider.sliderWidth), 1, true)
 
   local percentageIn = (slider.value - slider.min) / (slider.max - slider.min)
   if percentageIn == 1 then percentageIn = 0.999 end -- We aren't allowed actually to take up full width due to rendering bug
 
   screen.setForeground(slider.sliderColor)
-  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("█", ceil(slider.sliderWidth * percentageIn)))
+  screen.drawText(slider.x + slider.sliderOffset, slider.y, rep("━", ceil(slider.sliderWidth * percentageIn)), 1, true)
   screen.setForeground(slider.knobColor)
-  screen.drawText(slider.x + slider.sliderOffset + floor(slider.sliderWidth * percentageIn), slider.y, "█")
+  screen.drawText(slider.x + slider.sliderOffset + floor(slider.sliderWidth * percentageIn), slider.y, "━", 1, true)
 
   if slider.showVal then
     local textToDraw = (slider.prefix or "") .. slider.value.. (slider.suffix or "")
@@ -763,7 +895,7 @@ function GUI.createSlider(x, y, width, baseColor, sliderColor, knobColor, textCo
   slider.type = "slider"
   slider.eventHandler = sliderEventHandler
   slider.onChange = nil
-  slider.draw = drawSlider
+  slider.drawObject = drawSlider
 
   slider.sliderWidth = slider.width
   slider.sliderOffset = 0
@@ -1003,7 +1135,7 @@ function GUI.createInput(x, y, width, height, bgColor, textColor, focusColor,
   input.onClick = nil
   input.onPaste = nil
   input.onEnter = nil
-  input.draw = drawInput
+  input.drawObject = drawInput
   input.focused = false
 
   input.nextInput = nil
@@ -1069,7 +1201,7 @@ function GUI.createProgressIndicator(x, y, bgColor, activeColor1, activeColor2)
   indicator.activeColor2 = activeColor2
 
   indicator.type = "progress-indicator"
-  indicator.draw = drawProgressIndicator
+  indicator.drawObject = drawProgressIndicator
 
   indicator.cycle = 0
   indicator.animation = Animation:create(progressIndicatorAnimation, GUI.PROGRESS_DELAY, indicator)
@@ -1111,7 +1243,7 @@ function GUI.createProgressBar(x, y, width, color, activeColor, value, showValue
   local progressbar = GUIObject:create(x, y, width, height)
 
   progressbar.type = "progressbar"
-  progressbar.draw = drawProgressBar
+  progressbar.drawObject = drawProgressBar
   progressbar.value = value
 
   progressbar.color = color
@@ -1128,54 +1260,176 @@ function GUI.createProgressBar(x, y, width, color, activeColor, value, showValue
   return progressbar
 end
 
+-- Scroll bar --
+------------------------------------------------
+local function drawScrollBar(scrollbar)
+  local cursorSize = floor(scrollbar.size / scrollbar.totalScrollSize * scrollbar.size)
+  
+  local scrollRatioLow = floor(scrollbar.value / scrollbar.totalScrollSize * (scrollbar.size - cursorSize))
+  local scrollRatioHigh = scrollRatioLow + cursorSize + 1
 
+  if scrollbar.isVertical then
+    for i = 1, scrollbar.height do
+      if i > scrollRatioLow and i < scrollRatioHigh then screen.setForeground(scrollbar.fgColor)
+      else screen.setForeground(scrollbar.bgColor) end
+      screen.drawText(scrollbar.x, scrollbar.y + i - 1, "┃", 1, true)
+    end
+  else
+    screen.setForeground(scrollbar.bgColor)
+    screen.drawText(scrollbar.x, scrollbar.y, rep("━", scrollbar.width), 1, true)
+
+    screen.setForeground(scrollbar.fgColor)
+    screen.drawText(scrollbar.x + floor(scrollRatioLow), scrollbar.y, 
+      rep("━", cursorSize), 1, true)
+  end
+end
+
+-- Event handler for scrollbar --
+local function scrollBarEventHandler(scrollbar, ...)
+  local etype = select(1, ...)
+  if etype == "touch" or etype == "drag" then
+    -- Allowable error for scrollbar since they are quite thin to click on
+    -- Chars are 2x tall as wide so horz. bars need to have half the number of chars margin
+    local errorAllowed = GUI.SCROLL_BAR_ERROR_MARGIN
+    if not scrollbar.isVertical then errorAllowed = ceil(errorAllowed / 2) end
+
+    -- Check bounds for event
+    local x, y = select(3, ...), select(4, ...)
+    if x < scrollbar.x - errorAllowed or 
+       x > scrollbar.x + scrollbar.width + errorAllowed or
+       y < scrollbar.y - errorAllowed or 
+       y > scrollbar.y + scrollbar.height + errorAllowed then
+        return
+    end
+
+    -- New scroll is measured from a range of top to bottom - size
+    -- Thus percent in is measured up to a size of the scroll cursor
+    -- If horz. then same idea but with x
+    local percent
+    local cursorSize = floor(scrollbar.size / scrollbar.totalScrollSize * scrollbar.size)
+    
+    if scrollbar.isVertical then
+      percent = (y - scrollbar.y) / (scrollbar.size - cursorSize)
+    else percent = (x - scrollbar.x) / (scrollbar.size - cursorSize) end
+    
+    percent = max(0, min(percent, 1))
+    scrollbar.value = floor(scrollbar.totalScrollSize * percent)
+    scrollbar:draw()
+  elseif etype == "scroll" then
+    -- Verify scroll key is correct (shift + scroll for horz., scroll for vertical)
+    if (keyboard.isShiftDown(component.keyboard.address) and scrollbar.isVertical) or
+       (not keyboard.isShiftDown(component.keyboard.address) and not scrollbar.isVertical) 
+       then return end
+
+    -- Check if event is in the parent container
+    local x, y = select(3, ...), select(4, ...)
+    if not scrollbar.parent or
+      x < scrollbar.parent.x or x > scrollbar.parent.x + scrollbar.parent.width or
+      y < scrollbar.parent.y or y > scrollbar.parent.y + scrollbar.parent.height then
+        return
+    end
+
+    local direction = select(5, ...)
+    if direction < 0 then -- Scroll up
+      scrollbar.value = scrollbar.value + scrollbar.scrollSpeed
+    else -- Scroll down
+      scrollbar.value = scrollbar.value - scrollbar.scrollSpeed
+    end
+
+    -- Force bounds for value
+    scrollbar.value = min(scrollbar.totalScrollSize, max(scrollbar.value, 0))
+
+    -- Redraw only sometimes to avoid lag
+    scrollbar._updateScrollCounter = scrollbar._updateScrollCounter + 1
+    if scrollbar._updateScrollCounter >= GUI.SCROLL_BAR_REDRAW_EVERY_N_SCROLLS then
+      scrollbar._updateScrollCounter = 0
+      scrollbar:draw()
+    end
+  end
+end
+
+function GUI.createScrollBar(x, y, size, isVertical, bgColor, fgColor)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, size, "number")
+  checkArg(4, isVertical, "boolean")
+  checkArg(5, bgColor, "number")
+  checkArg(6, fgColor, "number")
+  
+  local width, height
+  if isVertical then width, height = 1, size
+  else width, height = size, 1 end
+
+  local scrollbar = GUIObject:create(x, y, width, height)
+
+  scrollbar.type = "scrollbar"
+  scrollbar.drawObject = drawScrollBar
+  scrollbar.eventHandler = scrollBarEventHandler
+  scrollbar.isVertical = isVertical
+  scrollbar.size = size
+
+  scrollbar.bgColor = bgColor
+  scrollbar.fgColor = fgColor
+
+  scrollbar.value = 0 -- Scroll offset
+  scrollbar.scrollSpeed = 4
+  scrollbar.totalScrollSize = size -- Max scrollable number of chars
+  scrollbar._updateScrollCounter = 0
+ 
+  scrollbar.setValue = function(val)
+    scrollbar.value = val
+    scrollbar:draw()
+  end
+
+  return scrollbar
+end
 
 -- Color Picker (Basic OC palette) --
 ------------------------------------------------
 
 -- TODO move to func to create new contaner
-local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1, true)
-colorPickerContainer.overrideBound = true
+-- local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1, true)
+-- colorPickerContainer.overrideBound = true
 
--- Create the color picker grid
-do
-  local buttonColor
+-- -- Create the color picker grid
+-- do
+--   local buttonColor
 
-  -- The current square is like a 2D slice of a cube, each dimension
-  -- corresponding to H, S, and V (The 2D slice is x = H, y = S) (z / up / down is V)
-  for y = 1, 20 do
-    for x = 1, 40 do
-      buttonColor = color.HSVToHex(x / 40, 1 - y / 20, 1)
-      colorPickerContainer.addChild(GUI.createButton(x, y + 1, 1, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
-    end
-  end
+--   -- The current square is like a 2D slice of a cube, each dimension
+--   -- corresponding to H, S, and V (The 2D slice is x = H, y = S) (z / up / down is V)
+--   for y = 1, 20 do
+--     for x = 1, 40 do
+--       buttonColor = color.HSVToHex(x / 40, 1 - y / 20, 1)
+--       colorPickerContainer.addChild(GUI.createButton(x, y + 1, 1, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
+--     end
+--   end
 
-  -- Side slider
-  for y = 1, 20 do
-    buttonColor = color.HSVToHex(1 / 40, 1 - 1/ 20, 1 - y / 20)
-    colorPickerContainer.addChild(GUI.createButton(x + 28, y + 1, 2, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
-  end
+--   -- Side slider
+--   for y = 1, 20 do
+--     buttonColor = color.HSVToHex(1 / 40, 1 - 1/ 20, 1 - y / 20)
+--     colorPickerContainer.addChild(GUI.createButton(x + 28, y + 1, 2, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
+--   end
 
-  -- Side input values for HSV and RGB
-  colorPickerContainer.addChild(GUI.createLabel(47, 2, "R: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 2, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   -- Side input values for HSV and RGB
+--   colorPickerContainer.addChild(GUI.createLabel(47, 2, "R: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 2, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-  colorPickerContainer.addChild(GUI.createLabel(47, 4, "G: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 4, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   colorPickerContainer.addChild(GUI.createLabel(47, 4, "G: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 4, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-  colorPickerContainer.addChild(GUI.createLabel(47, 6, "B: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 6, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   colorPickerContainer.addChild(GUI.createLabel(47, 6, "B: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 6, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-  colorPickerContainer.addChild(GUI.createLabel(47, 9, "H: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 9, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   colorPickerContainer.addChild(GUI.createLabel(47, 9, "H: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 9, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-  colorPickerContainer.addChild(GUI.createLabel(47, 11, "S: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 11, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   colorPickerContainer.addChild(GUI.createLabel(47, 11, "S: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 11, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-  colorPickerContainer.addChild(GUI.createLabel(47, 13, "V: ", 0x0, 5, 1))
-  colorPickerContainer.addChild(GUI.createInput(51, 13, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+--   colorPickerContainer.addChild(GUI.createLabel(47, 13, "V: ", 0x0, 5, 1))
+--   colorPickerContainer.addChild(GUI.createInput(51, 13, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
 
-end
+-- end
 
 local function drawPicker(picker)
   colorPickerContainer:draw()
@@ -1201,7 +1455,7 @@ function GUI.createColorPicker(x, y, width, height, text, currentColor)
 
   -- Additional picker properties --
   picker.type = "colorPickerBasic"
-  picker.draw = drawPicker
+  picker.drawObject = drawPicker
   picker.eventHandler = pickerEventHandler
 
   return picker
@@ -1263,7 +1517,7 @@ function GUI.createTerminal(x, y, width, height, text, bgColor, textColor, rootD
   terminal.onInput = nil
   terminal.onClick = nil
   terminal.onPaste = nil
-  terminal.draw = drawTerminal
+  terminal.drawObject = drawTerminal
   terminal.focused = false
 
   return terminal
