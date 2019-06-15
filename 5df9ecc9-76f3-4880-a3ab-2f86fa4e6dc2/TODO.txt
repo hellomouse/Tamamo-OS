@@ -34,6 +34,14 @@ noise api
 
 
 
+add a ram check program to help debug
+
+
+some way to access raw GPU functions no update
+
+
+bug: screen update gui should not uopdate after each one
+
 Sectionlike structure of the man program
 
 gui idea 
@@ -51,19 +59,20 @@ gui:
 list (tabs / vertical)
 table 
 dropdown box 
-file selector 
 code view 
 chart
 tree list
-color selector 
 textarea 
+
+color selector 
 popup
 component selector
-
+file selector 
 alert()
 
 
-
+image lib
+- flip, rotate methods, crop
 more image formats
 
 "workspaces" that can be created to handle events
@@ -119,8 +128,7 @@ hashlib - like base64, optional
 
 install from compressed archive
 
-image lib
-- flip, rotate methods, crop
+
 
 make base64 lib optional
 
@@ -128,13 +136,7 @@ optimize wiht https://oc.cil.li/topic/243-memory-management/
 
 
 
-screen api 
-- get pixel at location
-- x, y- > index 
-- index -> x, y
-
-
-draw rectangle?
+draw \triangle
 
 semipixel ellipse outline needs to be better 
 
@@ -153,7 +155,7 @@ optimizations that don't work
 - seralizing coordinates into strings
 - try to fill with curernt bg color first then try others
 - try to fill with current fg
-
+- not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
 
 note that x scrollbars are smaller than y scrollbars due to 2x char height
 

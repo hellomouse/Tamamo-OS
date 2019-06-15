@@ -45,6 +45,13 @@ local function getIndex(x, y)
 	return bufferWidth * (y - 1) + x
 end
 
+-- Convert index to x y coords
+local function getCoords(index)
+  local y = floor(index / buffWidth) + 1
+  local x = index - (y - 1) * buffWidth
+  return x, y
+end
+
 -- Check if two characters at the buffers are
 -- equal. Equality is checked by symbol, fg and bg
 -- unless the character is whitespace, in which case
@@ -364,22 +371,15 @@ function update(force)
   local t -- Temp variable
   local setCounter = 0
   local fillCounter = 1
-  local currBg, currFg
 
   for bgcolor, group1 in pairs(colorChanges) do
-    if bgcolor ~= currBg then
-      GPUsetBackground(absColor(bgcolor), bgcolor < 0)
-      currBg = bgcolor
-    end
+    GPUsetBackground(absColor(bgcolor), bgcolor < 0)
 
     for fgcolor, group2 in pairs(group1) do
       -- In the event a color is just spaces there is no need to
       -- do a foreground call
       if #group2 == 1 and (group2[1] == "⠀" or group2[1] == " ") then -- Do nothing
-      elseif currFg ~= fgcolor then
-        GPUsetForeground(absColor(fgcolor), fgcolor < 0)
-        currFg = fgcolor
-      end
+      else GPUsetForeground(absColor(fgcolor), fgcolor < 0) end
 
       for i = 1, #group2 do
         t = group2[i]
@@ -411,7 +411,6 @@ function update(force)
   -- Reset the drawX drawY bounds to largest / smallest possible
   updateBoundX1, updateBoundX2 = bufferWidth, 0
   updateBoundY1, updateBoundY2 = bufferHeight, 0 
-
   changeBg, changeFg, changeSym = {}, {}, {}
 end
 
@@ -1001,5 +1000,8 @@ return {
   resetPalette = resetPalette,
   drawEllipseThin = drawEllipseThin,
   drawEllipseOutlineThin = drawEllipseOutlineThin,
-  drawBeizerCurve = drawBeizerCurve
+  drawBeizerCurve = drawBeizerCurve,
+  getRaw = getRaw,
+  getIndex = getIndex,
+  getCoords = getCoords
 }
