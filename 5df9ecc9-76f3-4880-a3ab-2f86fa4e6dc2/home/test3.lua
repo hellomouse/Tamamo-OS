@@ -117,7 +117,9 @@ container:addChild(scrollt)
 
 container:draw()
 
-
+if computer then
+print(computer.freeMemory() / computer.totalMemory())
+end
 
 while true do
     doShit(event.pull())
