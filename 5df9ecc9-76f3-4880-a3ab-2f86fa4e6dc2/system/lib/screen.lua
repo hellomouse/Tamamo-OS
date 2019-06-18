@@ -672,28 +672,28 @@ function drawRectOutline(x, y, w, h, alpha)
 
   -- Corners
   setAdaptive(x, y, cfg, cbg, alpha, true, false)
-  set(x, y, "┌")
+  set(x, y, "┌", false, true)
   setAdaptive(x + w - 1, y, cfg, cbg, alpha, true, false)
-  set(x + w - 1, y, "┐")
+  set(x + w - 1, y, "┐", false, true)
   setAdaptive(x, y + h - 1, cfg, cbg, alpha, true, false)
-  set(x, y + h - 1, "└")
+  set(x, y + h - 1, "└", false, true)
   setAdaptive(x + w, y + h - 1, cfg, cbg, alpha, true, false)
-  set(x + w - 1, y + h - 1, "┘")
+  set(x + w - 1, y + h - 1, "┘", false, true)
 
   -- Top and bottom
   for x1 = x + 1, x + w - 2 do
     setAdaptive(x1, y, cfg, cbg, alpha, true, false)
-    set(x1, y, "─")
+    set(x1, y, "─", false, true)
     setAdaptive(x1, y + h - 1, cfg, cbg, alpha, true, false)
-    set(x1, y + h - 1, "─")
+    set(x1, y + h - 1, "─", false, true)
   end
 
   -- Sides
   for y1 = y + 1, y + h - 2 do
     setAdaptive(x, y1, cfg, cbg, alpha, true, false)
-    set(x, y1, "│")
+    set(x, y1, "│", false, true)
     setAdaptive(x + w - 1, y1, cfg, cbg, alpha, true, false)
-    set(x + w - 1, y1, "│")
+    set(x + w - 1, y1, "│", false, true)
   end
 
   -- Reset original bg / fg colors
@@ -760,7 +760,7 @@ function drawText(x, y, string, alpha, blendBg)
     if x < 1 then goto continue end
     if x > bufferWidth then break end
 
-    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)))
+    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)), false, true)
     ::continue::
   end
 
@@ -881,7 +881,7 @@ function subEllipseTemplate(x, y, a, b, alpha, justOutline)
 
       subChar = " "
       currentBg = currentFg
-      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar))
+      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar), false, true)
     else
       -- Side bars should have the background equal to the blended value
       -- However since braille is filled with foreground we swap bg and fg
@@ -890,7 +890,7 @@ function subEllipseTemplate(x, y, a, b, alpha, justOutline)
       charToDraw = setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar)
       currentFg = currentBg
       currentBg = getRaw(x1, y1)
-      set(x1, y1, charToDraw)
+      set(x1, y1, charToDraw, false, true)
     end
     
     currentBg = currentBgSave
