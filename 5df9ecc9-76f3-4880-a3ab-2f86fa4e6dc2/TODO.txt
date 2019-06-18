@@ -33,6 +33,9 @@ test the moveForward and shit
 noise api
 
 
+system drivers 
+- sort by rank, select best one
+
 
 add a ram check program to help debug
 
@@ -40,7 +43,9 @@ add a ram check program to help debug
 some way to access raw GPU functions no update
 
 
-bug: screen update gui should not uopdate after each one
+TODO use copy() somehow when scrolling to lessen lag
+
+
 
 Sectionlike structure of the man program
 
@@ -77,10 +82,9 @@ more image formats
 
 "workspaces" that can be created to handle events
 
+GUI element - consume event and make transparent
 
 disabled elements more apparent
-
-make sure copy / fill and shit respect bounds in screen
 
 
 validate width and shit < 0 and other checks not just checkarg
@@ -140,7 +144,7 @@ draw \triangle
 
 semipixel ellipse outline needs to be better 
 
- semipixel curve
+semipixel curve
 regular line
 
 

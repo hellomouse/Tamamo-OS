@@ -187,7 +187,7 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
     if self.children[i].hidden then goto continue end
 
     -- If only updating child only update elements that overlap with it
-    if child == nil or 
+    if child == nil or
      (child ~= nil and child.x < self.children[i].x + self.children[i].width and
       child.x + child.width > self.children[i].x and
       child.y < self.children[i].y + self.children[i].height and
@@ -213,6 +213,7 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
     screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
     ::continue::
   end
+  screen.update()
 end
 
 function GUIContainer:resetBounds()
@@ -353,8 +354,12 @@ end
 
 local function panelEventHandler(panel, ...)
   panel.container:eventHandler(...)
-  if panel.xScrollbar then panel.xScrollbar:eventHandler(...) end
-  if panel.yScrollbar then panel.yScrollbar:eventHandler(...) end
+  if panel.xScrollbar then 
+    panel.xScrollbar:eventHandler(...) 
+  end
+  if panel.yScrollbar then 
+    panel.yScrollbar:eventHandler(...) 
+  end
 end
 
 function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, overrideBound, scrollX, scrollY, scrollWidth, scrollHeight)
@@ -1183,10 +1188,6 @@ local function drawProgressIndicator(indicator)
   if not indicator.active then screen.setForeground(indicator.bgColor)
   else screen.setForeground(indicator.activeColor2) end
   screen.drawText(indicator.x, indicator.y, rep("▂", indicator.width), 1, true)
-end
-
-local function progressIndicatorAnimation(indicator, percentDone, animation)
-  indicator:draw()
   screen.setForeground(indicator.activeColor1)
 
   if indicator.cycle < indicator.width / 2 then -- No cycling back to beginning
@@ -1195,10 +1196,12 @@ local function progressIndicatorAnimation(indicator, percentDone, animation)
     screen.drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", indicator.width - indicator.cycle), 1, true)
     screen.drawText(indicator.x, indicator.y, rep("▂", floor(indicator.width / 2) - indicator.width + indicator.cycle), 1, true)
   end
+end
 
+local function progressIndicatorAnimation(indicator, percentDone, animation)
+  indicator:draw()
   indicator.cycle = indicator.cycle + 1
   if indicator.cycle > indicator.width then indicator.cycle = 0 end
-  screen.update() -- Fast update cycle requires updating screen
 end
 
 function GUI.createProgressIndicator(x, y, bgColor, activeColor1, activeColor2)
