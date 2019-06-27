@@ -25,14 +25,19 @@ screen.setForeground(0xFFFFFF)
 screen.update()
 screen.drawRectOutline(20, 20, 80, 20, 1)
 screen.setBackground(0xFF0000)
-screen.drawEllipse(30, 30, 20, 10, 0.5)
+--screen.drawEllipse(30, 30, 20, 10, 0.5)
 
 screen.update()
 
 screen.drawText(40, 40, "test")
 screen.setForeground(0x00FF00)
 screen.setBackground(0x00FF00)
-screen.drawEllipseOutlineThin(40, 30, 20, 20, 0.5)
+--screen.drawEllipseOutlineThin(40, 30, 20, 20, 0.5)
+
+screen.drawLine(10, 10, 50, 20, 0.25)
+screen.drawLine(10, 10, 20, 40, 0.5)
+screen.drawLine(10, 10, 10, 40, 0.75)
+screen.drawLine(10, 10, 50, 10)
 
 --os.sleep(10)
 --screen.update()
