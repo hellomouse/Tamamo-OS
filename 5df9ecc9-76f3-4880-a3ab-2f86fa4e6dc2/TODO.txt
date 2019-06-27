@@ -58,16 +58,30 @@ rewrite animation threads to use 1 thread to optimize memory?
 - calculate itming based on thread main tick iteration to get number of ticks before counting, 
  - iterates all active animations
 
+internal clipboard
 
+
+component.ocemu.log
+
+
+chart better rounding? - use percentage like in os thing
+
+fix screen copy ignore out of bounds if out of screen
+copy if set true try to copy part if possible
+copy dont directly update
+
+
+codeview selections and indentation lines
 
 gui: 
 list (tabs / vertical)
-table 
+table
 dropdown box 
 code view 
 chart
 tree list
-textarea 
+textarea
+brailel canvas
 
 color selector 
 popup
@@ -89,6 +103,9 @@ disabled elements more apparent
 
 validate width and shit < 0 and other checks not just checkarg
 progressbar is showval then must define textcolor
+check startCol is integer, etc...?
+
+GUI needs a lot more strict checking ^
 
 
 
@@ -145,7 +162,6 @@ draw \triangle
 semipixel ellipse outline needs to be better 
 
 semipixel curve
-regular line
 
 
 image masking - graphics object!

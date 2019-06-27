@@ -40,7 +40,7 @@ k.history = true
 container:addChild(k)
 
 local l = gui.createProgressIndicator(3, 22, 0x333333, 0xFF0000, 0xFFAA00)
-container:addChild(l)
+--container:addChild(l)
 
 
 
@@ -105,7 +105,7 @@ bar.setValue(0.2)
 
 container:addChild(gui.createSlider(10, 47, 20, 0x333333, 0xFF0000, 0xFFFFFF, 0xFFFFFF, 10, 50, 30, true, true, 2, "BWBellairs "))
 
-container:addChild(gui.createCheckbox(90, 30, "test", 0x333333, 0xFF0000, 0xFFFFFF))
+container:addChild(gui.createCheckbox(90, 20, "test", 0x333333, 0xFF0000, 0xFFFFFF))
 
 container:addChild(gui.createScrollBar(90, 10, 10, true, 0x333333, 0xFF0000))
 container:addChild(gui.createScrollBar(90, 10, 20, false, 0x333333, 0xFF0000))
@@ -114,6 +114,42 @@ container:addChild(gui.createScrollBar(90, 10, 20, false, 0x333333, 0xFF0000))
 local scrollt = gui.createPanel(90, 1, 25, 20, 0x111111, 1, 1, true, true, true, 30, 100)
 scrollt.addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. Ааааа, аААаа! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear!", 0xFFFFFF, 30))
 container:addChild(scrollt)
+
+container:addChild(gui.createChart(90, 30, 50, 15, 0xFFFFFF, 0xFF00FF, 0xFF0000, 0xFFFF00,
+    1, 1, "t", "s", true, {1,2,3}, {4,5,6}, 2))
+
+local hs = {}
+hs[5] = 0xFF0000
+container:addChild(gui.createCodeView(70, 20, 40, 20, {
+    "line 1",
+    "line 2",
+    "this is an example of a really long line that forces u to scroll across",
+    "-- comment test",
+    "for i = 1, 10 do",
+        "",
+        "",
+        "local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme)",
+  "-- Base text (assumed you set base color already)",
+  "screen.drawText(x, y, line)",
+"",
+  "-- Syntax highlighting for each group",
+  "local index1, index2, group, pattern",
+"",
+ "for i = 1, #syntaxPatterns, 2 do",
+  "  pattern = syntaxPatterns[i]",
+  "  group = syntaxPatterns[i + 1] .. \"\"",
+"",
+  "  index1, index2 = find(line, pattern, 1)",
+  "  screen.setForeground(colorScheme[group] or 1)",
+"",
+  "  while index1 ~= nil do",
+  "    screen.drawText(x + index1 - 1, y, sub(line, index1, index2))",
+  "    index1, index2 = find(line, pattern, index1 + 1)",
+  "  end",
+  "end",
+}, 1, 16, nil, hs, gui.LUA_SYNTAX_PATTERNS,
+gui.LUA_SYNTAX_COLOR_SCHEME, true))
+
 
 container:draw()
 

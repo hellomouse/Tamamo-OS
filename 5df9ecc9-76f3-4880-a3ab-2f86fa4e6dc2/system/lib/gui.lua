@@ -44,6 +44,66 @@ local GUI = {
   SCROLL_BAR_BG_COLOR = 0x333333, -- TODO replace with system color palette
   SCROLL_BAR_ERROR_MARGIN = 2,
   SCROLL_BAR_REDRAW_EVERY_N_SCROLLS = 2, -- Redraw every n scroll events to avoid lag
+
+  -- Syntax Highlighting
+  -- Credits to Igor Timofeev's MineOS
+  -- https://github.com/IgorTimofeev/MineOS/blob/master/Libraries/GUI.lua
+  LUA_SYNTAX_COLOR_SCHEME = {
+		codeBackground = 0x1E1E1E,
+		text = 0xE1E1E1,
+		strings = 0x99FF80,
+		loops = 0xFFFF98,
+		comments = 0x898989,
+		boolean = 0xFFDB40,
+		logic = 0xFFCC66,
+		numbers = 0x66DBFF,
+		functions = 0xFFCC66,
+		compares = 0xFFCC66,
+		lineNumberBackground = 0x2D2D2D,
+		lineNumberColor = 0xC3C3C3,
+		scrollBarBackground = 0x2D2D2D,
+		scrollBarForeground = 0x5A5A5A,
+		selection = 0x4B4B4B,
+		indentation = 0x2D2D2D
+  },
+  
+  -- Patterns go under
+  -- <string pattern to match> <group color> <shift start index right> <shift end index left>
+	LUA_SYNTAX_PATTERNS = {
+		"[%.%,%>%<%=%~%+%-%*%/%^%#%%%&]", "compares", 0, 0,
+		"[^%a%d][%.%d]+[^%a%d]", "numbers", 1, 1,
+		"[^%a%d][%.%d]+$", "numbers", 1, 0,
+		"0x%w+", "numbers", 0, 0,
+		" not ", "logic", 0, 1,
+		" or ", "logic", 0, 1,
+		" and ", "logic", 0, 1,
+		"function%(", "functions", 0, 1,
+		"function%s[^%s%(%)%{%}%[%]]+%(", "functions", 9, 1,
+		"nil", "boolean", 0, 0,
+		"false", "boolean", 0, 0,
+		"true", "boolean", 0, 0,
+		" break$", "loops", 0, 0,
+		"elseif ", "loops", 0, 1,
+		"else[%s%;]", "loops", 0, 1,
+		"else$", "loops", 0, 0,
+		"function ", "loops", 0, 1,
+		"local ", "loops", 0, 1,
+		"return", "loops", 0, 0,
+		"until ", "loops", 0, 1,
+		"then", "loops", 0, 0,
+		"if ", "loops", 0, 1,
+		"repeat$", "loops", 0, 0,
+		" in ", "loops", 0, 1,
+		"for ", "loops", 0, 1,
+		"end[%s%;]", "loops", 0, 1,
+		"end$", "loops", 0, 0,
+		"do ", "loops", 0, 1,
+		"do$", "loops", 0, 0,
+		"while ", "loops", 0, 1,
+		"\'[^\']+\'", "strings", 0, 0,
+		"\"[^\"]+\"", "strings", 0, 0,
+		"%-%-.+", "comments", 0, 0,
+	},
 }
 
 -- Optimization for lua
@@ -51,6 +111,8 @@ local len = unicode.len
 local sub = unicode.sub
 local char = string.char
 local rep = string.rep
+local gsub = string.gsub
+local find = string.find
 
 local insert = table.insert
 local remove = table.remove
@@ -158,6 +220,16 @@ function GUIContainer:addChild(guiObject, index)
   guiObject.moveToFront = function() self.children:add(guiObject.remove()) end
   guiObject.moveToBack =  function() self.children:add(guiObject.remove(), 1) end
   guiObject.remove = function() return self.children:remove(self:findChild(guiObject)) end
+  guiObject.setPos = function(x, y)
+    if x then
+      guiObject.localX = x - self.x
+      guiObject.x = x
+    end
+    if y then
+      guiObject.localY = y - self.y
+      guiObject.y = y
+    end
+  end
 
   if index == nil then insert(self.children, guiObject)
   else insert(self.children, guiObject, index) end
@@ -188,10 +260,11 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
 
     -- If only updating child only update elements that overlap with it
     if child == nil or
-     (child ~= nil and child.x < self.children[i].x + self.children[i].width and
-      child.x + child.width > self.children[i].x and
-      child.y < self.children[i].y + self.children[i].height and
-      child.y + child.height > self.children[i].y) then -- Do nothing since overlap and valid
+     (child ~= nil and
+      child.x <= self.children[i].x + self.children[i].width and
+      child.x + child.width >= self.children[i].x and
+      child.y <= self.children[i].y + self.children[i].height and
+      child.y + child.height >= self.children[i].y) then -- Do nothing since overlap and valid
     else goto continue end
 
     -- GUI Containers already set their drawing bounds, otherwise
@@ -213,7 +286,11 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
     screen.setDrawingBound(self.boundX1, self.boundY1, self.boundX2, self.boundY2)
     ::continue::
   end
-  screen.update()
+
+  -- Avoids flickering with GUIContainers within containers
+  if not self.isChild then
+    screen.update()
+  end
 end
 
 function GUIContainer:resetBounds()
@@ -261,7 +338,6 @@ function GUIObject:eventHandler(...)
 end
 
 function GUIObject:draw()
-  -- TODO fix this iteration shit with firstParent
   if not self.parent or (self.parent.isChild and not self.firstParent) then return end -- Must have parent container to render
   self.parent:draw(self)
 end
@@ -333,12 +409,12 @@ local function drawPanel(panel)
 
   -- Render any scrollbars it might have
   -- Auto hide scrollbars if scrollX / scrollY is set to "auto" and size < width / height
-  if panel.xScrollbar then 
+  if panel.xScrollbar then
     if scrollX == "auto" and panel.width >= panel.xScrollbar.totalScrollSize then 
       panel.xScrollbar.hidden = true
     else panel.xScrollbar.hidden = false end
 
-    panel.xScrollbar:drawObject() 
+    panel.xScrollbar:drawObject()
   end
   if panel.yScrollbar then
     if scrollY == "auto" and panel.height >= panel.yScrollbar.totalScrollSize then 
@@ -407,9 +483,6 @@ function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, override
     ybar.totalScrollSize = max(scrollHeight, height)
     panel.yScrollbar = ybar
   end
-
-  -- Original container x
-  panel._ocx, panel._ocy = panel.container.x, panel.container.y
 
   -- Functions --
   panel.addChild = function(guiObj, index) panel.container:addChild(guiObj, index) end
@@ -490,7 +563,6 @@ function GUI.createTextBox(x, y, text, textColor, width, height)
 
   return textbox
 end
-
 
 -- Text Labels --
 ------------------------------------------------
@@ -1052,7 +1124,9 @@ end
 
 -- Input cursor animation (Just need to draw)
 local function inputAnimation(input, percentDone, animation)
-  input:draw() -- Update appearance
+  if input.focused then
+    input:draw() -- Update appearance
+  end
 end
 
 local function drawInput(input)
@@ -1281,7 +1355,6 @@ end
 ------------------------------------------------
 local function drawScrollBar(scrollbar)
   local cursorSize = floor(scrollbar.size / scrollbar.totalScrollSize * scrollbar.size)
-  
   local scrollRatioLow = floor(scrollbar.value / scrollbar.totalScrollSize * (scrollbar.size - cursorSize))
   local scrollRatioHigh = scrollRatioLow + cursorSize + 1
 
@@ -1400,6 +1473,299 @@ function GUI.createScrollBar(x, y, size, isVertical, bgColor, fgColor)
 
   return scrollbar
 end
+
+
+-- Chart --
+------------------------------------------------
+local function formatChartValue(val, round)
+  if round <= 0 then return "" .. math.floor(val + 0.5) end -- Round to nearest integer
+  return string.format("%." .. round .. "f", val)
+end 
+
+local function drawChart(chart)
+  -- Search for min / max value for both x and y
+  if chart.minX == nil then
+    local xVals, yVals = chart.xValues, chart.yValues
+    local minX, maxX, minY, maxY = xVals[1], xVals[1], yVals[1], yVals[1]
+    
+    for i = 2, #xVals do
+      if xVals[i] < minX then minX = xVals[i]
+      elseif xVals[i] > maxX then maxX = xVals[i] end
+      if yVals[i] < minY then minY = yVals[i]
+      elseif yVals[i] > maxY then maxY = yVals[i] end 
+    end
+
+    chart.minX, chart.maxX, chart.minY, chart.maxY = minX, maxX, minY, maxY
+  end
+
+  local xOffset = max(
+    #formatChartValue(chart.minY, chart.round), 
+    #formatChartValue(chart.maxY, chart.round)) + #chart.ySuffix + 1
+
+  -- Render axis (axii?)
+  screen.setForeground(chart.axisColor)
+  for y = chart.y, chart.y + chart.height - 3 do
+    screen.drawText(xOffset + chart.x - 1, y, "┨", 1, true)
+  end
+  screen.drawText(chart.x + xOffset, chart.y + chart.height - 2, rep("┯━", (chart.width - xOffset) / 2), 1, true)
+  screen.drawText(chart.x + xOffset - 1, chart.y + chart.height - 2, "┗", 1, true)
+
+  -- Render axis labels
+  local xAxisIncPercentage = chart.xSpacing / (chart.maxX - chart.minX)
+  local yAxisIncPercentage = chart.ySpacing / (chart.maxY - chart.minY)
+  local xIncPixel = floor(xAxisIncPercentage * (chart.width - 2 - xOffset))
+  local yIncPixel = floor(yAxisIncPercentage * (chart.height - 2))
+
+  local xLabel, yLabel
+  for y = chart.y, chart.y + chart.height - 2, yIncPixel do
+    yLabel = formatChartValue(chart.maxY - (y - chart.y) / (chart.height - 2) * (chart.maxY - chart.minY), chart.round)
+
+    screen.setForeground(chart.labelColor)
+    screen.drawText(chart.x, y, yLabel, 1, true)
+
+    screen.setForeground(chart.labelSuffixColor)
+    screen.drawText(chart.x + #yLabel, y, chart.ySuffix, 1, true)
+  end
+  for x = chart.x + xOffset, chart.x + chart.width, xIncPixel do
+    xLabel = formatChartValue(chart.minX + (x - chart.x - xOffset) / (chart.width - xOffset) * (chart.maxX - chart.minX), chart.round)
+    
+    screen.setForeground(chart.labelColor)
+    screen.drawText(x, chart.y + chart.height - 1, xLabel, 1, true)
+
+    screen.setForeground(chart.labelSuffixColor)
+    screen.drawText(x + #xLabel, chart.y + chart.height - 1, chart.xSuffix, 1, true)
+  end
+
+  -- Draw the actual chart itself
+end
+
+function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor,
+    xSpacing, ySpacing, xSuffix, ySuffix, fillChart, xValues, yValues, round)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, height, "number")
+  checkArg(5, axisColor, "number")
+  checkArg(6, labelColor, "number")
+  checkArg(7, labelSuffixColor, "number")
+  checkArg(8, chartColor, "number")
+  checkArg(9, xSpacing, "number")
+  checkArg(10, ySpacing, "number")
+  checkArg(11, xSuffix, "string")
+  checkArg(12, ySuffix, "string")
+  checkArg(13, fillChart, "boolean")
+  checkArg(14, xValues, "table")
+  checkArg(15, yValues, "table")
+  checkArg(16, round, "nil", "number")
+
+  if round == nil then round = 0 end
+  if #xValues ~= #yValues then error("Length of x values must equal y values") end
+  local chart = GUIObject:create(x, y, width, height)
+
+  chart.type = "chart"
+  chart.drawObject = drawChart
+
+  chart.axisColor, chart.labelColor = axisColor, labelColor
+  chart.labelSuffixColor, chart.color = labelSuffixColor, chartColor
+  chart.xSpacing, chart.ySpacing = xSpacing, ySpacing
+  chart.xSuffix, chart.ySuffix = xSuffix, ySuffix
+  chart.fillChart = fillChart
+  
+  chart.xValues = xValues
+  chart.yValues = yValues
+  chart.round = floor(round)
+
+  chart.update = function(xValues, yValues)
+    chart.minX = nil -- Force update all min/max
+    chart.xValues, chart.yValues = xValues, yValues
+    chart:draw()
+  end
+  chart.addPoint = function(x, y)
+    chart.minX = nil -- Force update all min/max
+    chart.xValues[#chart.xValues + 1] = x
+    chart.yValues[#chart.yValues + 1] = y
+    chart:draw()
+  end
+
+  chart.minX, chart.maxX = nil, nil
+  chart.minY, chart.maxY = nil, nil
+
+  return chart
+end
+
+
+-- Code View --
+------------------------------------------------
+local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme)
+  -- Base text (assumed you set base color already)
+  screen.drawText(x, y, line)
+
+  -- Syntax highlighting for each group
+  local index1, index2, group, pattern
+
+  for i = 1, #syntaxPatterns, 4 do
+    pattern = syntaxPatterns[i]
+    group = syntaxPatterns[i + 1] .. ""
+
+    index1, index2 = find(line, pattern, 1)
+    screen.setForeground(colorScheme[group] or 1)
+
+    while index1 ~= nil do
+      screen.drawText(x + index1 - 1 + syntaxPatterns[i + 2], y, 
+        sub(line, index1 + syntaxPatterns[i + 2], index2 - syntaxPatterns[i + 3]))
+      index1, index2 = find(line, pattern, index1 + 1)
+    end
+  end
+end
+
+local function drawCodeView(codeview)
+  local lineNumberBarWidth = #(codeview.startLine + codeview.height .. "") + 2
+  local maxLineLength = 0
+  local currentLineLength, dx, dy, numberToDraw
+
+  -- Render code
+  screen.setBackground(codeview.colorScheme.codeBackground)
+  screen.drawRect(codeview.x + lineNumberBarWidth, codeview.y, codeview.width - lineNumberBarWidth, codeview.height)
+
+  for line = codeview.startLine, codeview.startLine + codeview.height - 1 do
+    if codeview.lines[line] == nil then goto continue end
+
+    currentLineLength = len(codeview.lines[line])
+    if currentLineLength > maxLineLength then 
+      maxLineLength = currentLineLength
+    end
+
+    if codeview.scrollable then
+      dx = codeview.xScrollbar.value
+      dy = codeview.yScrollbar.value
+    else 
+      dx = codeview.startCol
+      dy = codeview.startLine
+    end
+
+    screen.setForeground(codeview.colorScheme.text)
+
+    if codeview.syntaxHighlighting then
+      drawHighlightedText(codeview.lines[line], codeview.x + lineNumberBarWidth + 1 - dx, 
+        codeview.y + line - dy,
+        codeview.syntaxPatterns, codeview.colorScheme)
+    else
+      screen.drawText(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy,
+        codeview.lines[line])
+    end
+
+    -- Text selections
+    -- codeview.colorScheme.selection
+    -- screen.setBackground(codeview.highlights[line])
+    -- screen.drawText(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
+
+    -- Highlight the current text
+    if codeview.highlights and codeview.highlights[line] then
+      local selectSize = codeview.width - lineNumberBarWidth
+      if codeview.scrollable and maxLineLength > codeview.width - lineNumberBarWidth then
+        selectSize = selectSize - 1 -- Leave room for scrollbar
+      end 
+
+      screen.setBackground(codeview.highlights[line])
+      screen.drawText(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
+      screen.setBackground(codeview.colorScheme.codeBackground)
+    end
+      
+    ::continue::
+  end
+
+  -- Update and render scrollbars
+  if codeview.scrollable then
+    if maxLineLength > codeview.width - lineNumberBarWidth then
+      codeview.xScrollbar.width = codeview.width - lineNumberBarWidth
+      codeview.xScrollbar.totalScrollSize = maxLineLength - lineNumberBarWidth
+      codeview.xScrollbar.x = codeview.x + lineNumberBarWidth
+      codeview.xScrollbar:drawObject()
+    end
+    if #codeview.lines > codeview.height then
+      codeview.yScrollbar.totalScrollSize = #codeview.lines - codeview.height
+      codeview.yScrollbar:drawObject()
+    end
+  end
+
+    -- Render line numbers
+  screen.setBackground(codeview.colorScheme.lineNumberBackground)
+  screen.drawRect(codeview.x, codeview.y, lineNumberBarWidth, codeview.height)
+  screen.setForeground(codeview.colorScheme.lineNumberColor)
+
+  for n = 1, codeview.height do
+    numberToDraw = codeview.startLine + n - 1 + dy .. ""
+    screen.drawText(codeview.x + lineNumberBarWidth - 1 - #numberToDraw, codeview.y + n - 1, numberToDraw)
+  end
+end
+
+local function codeViewEventHandler(codeview, ...)
+  if codeview.scrollable then
+    codeview.xScrollbar:eventHandler(...)
+    codeview.yScrollbar:eventHandler(...)
+  end
+end
+
+function GUI.createCodeView(x, y, width, height, lines, startLine, startCol, selections, highlights, syntaxPatterns,
+    colorScheme, syntaxHighlighting, scrollable)
+  checkArg(1, x, "number")
+  checkArg(2, y, "number")
+  checkArg(3, width, "number")
+  checkArg(4, height, "number")
+  checkArg(5, lines, "table")
+  checkArg(6, startLine, "number")
+  checkArg(7, startCol, "number")
+  checkArg(8, selections, "table", "nil")
+  checkArg(9, highlights, "table", "nil")
+  checkArg(12, syntaxHighlighting, "boolean")
+
+  if syntaxHighlighting then
+    checkArg(10, syntaxPatterns, "table")
+    checkArg(11, colorScheme, "table")
+    checkArg(12, scrollable, "boolean", "nil")
+  end
+  if scrollable == nil then scrollable = true end
+  if syntaxHighlighting == nil then syntaxHighlighting = true end
+
+  -- Correction for windows line breaks and tab chars
+  for i = 1, #lines do
+    lines[i] = gsub(gsub(lines[i], "\t", "  "), "\r\n", "\n")
+  end
+
+  local codeview = GUIObject:create(x, y, width, height)
+
+  codeview.type = "codeview"
+  codeview.drawObject = drawCodeView
+  codeview.eventHandler = codeViewEventHandler
+  codeview.scrollable = scrollable
+
+  if scrollable then
+    local xbar = GUI.createScrollBar(x + 3, y + height, width - 3, false, colorScheme.scrollBarBackground, colorScheme.scrollBarForeground)
+    xbar.parent = codeview
+    xbar.totalScrollSize = width
+    xbar.value = startCol
+    codeview.xScrollbar = xbar
+
+    local ybar = GUI.createScrollBar(x + width, y, height - 1, true, colorScheme.scrollBarBackground, colorScheme.scrollBarForeground)
+    ybar.parent = codeview
+    ybar.totalScrollSize = height
+    ybar.value = startLine
+    codeview.yScrollbar = ybar
+  end
+
+  codeview.lines = lines
+  codeview.startLine = startLine
+  codeview.startCol = startCol
+  codeview.selections = selections
+  codeview.highlights = highlights
+  codeview.syntaxPatterns = syntaxPatterns
+  codeview.colorScheme = colorScheme
+  codeview.syntaxHighlighting = syntaxHighlighting
+
+  return codeview
+end
+
+
 
 -- Color Picker (Basic OC palette) --
 ------------------------------------------------

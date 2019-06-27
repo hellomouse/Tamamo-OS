@@ -708,7 +708,7 @@ end
 function drawRect(x, y, w, h, alpha)
   if alpha == 0 then return false end -- No alpha no render
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
-  if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
+  if x > bufferWidth or y > bufferHeight then return false end
   if alpha == nil then alpha = 1 end
 
   checkArg(1, x, "number")
@@ -723,6 +723,8 @@ function drawRect(x, y, w, h, alpha)
   -- Directly fill if area is large enough
   for x1 = x, x + w - 1 do
   for y1 = y, y + h - 1 do
+    if x1 < 1 then goto continue end
+    if y1 < 1 then goto continue end
     if x1 > bufferWidth then goto continue end
     if y1 > bufferHeight then break end
     
@@ -762,6 +764,58 @@ function drawText(x, y, string, alpha, blendBg)
 
     set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)), false, true)
     ::continue::
+  end
+
+  -- Reset original bg / fg colors
+  currentBg = currentBgSave
+  currentFg = currentFgSave
+  return true
+end
+
+function drawLine(x1, y1, x2, y2, alpha)
+  if alpha == 0 then return false end -- No alpha no render
+  if alpha == nil then alpha = 1 end
+  x1, x2, y1, y2 = floor(x1), floor(x2), floor(y1), floor(y2)
+
+  checkArg(1, x1, "number")
+  checkArg(2, y1, "number")
+  checkArg(3, x2, "number")
+  checkArg(4, y2, "number")
+
+  if x2 < x1 then 
+    x1, x2 = x2, x1
+    y1, y2 = y2, y1
+  end
+
+  local cfg, cbg = normalizeColor(currentFg), normalizeColor(currentBg)
+  local currentFgSave, currentBgSave = currentFg, currentBg
+
+  -- Special case for vertical lines
+  if x1 == x2 then
+    drawRect(x1, y1, 1, y2 - y1, alpha)
+    return true
+  end
+
+  local gradient = (y2 - y1) / (x2 - x1)
+  
+  if gradient > 0.5 then
+    local x -- Store x coordinate to set
+    for y = 0, y2 - y1 - 1 do
+      x = floor(y / gradient + x1)
+      if y > bufferHeight or y < 1 or
+         x + x1 > bufferWidth or x < 1 then goto continue end
+      set(x, y + y1, setAdaptive(x, y + y1, cfg, cbg, alpha, true, true, " "), false, true)
+      ::continue::
+    end
+  else
+    local y -- Store y coordinate to set
+    for x = 0, x2 - x1 - 1 do
+      y = floor(gradient * x + y1)
+      if y > bufferHeight or y < 1 or
+        x + x1 > bufferWidth or x < 1 then goto continue end
+      set(x + x1, y, setAdaptive(x + x1, y, cfg, cbg, alpha, true, true, " "), false, true)
+      ::continue::
+    end
   end
 
   -- Reset original bg / fg colors
@@ -991,6 +1045,7 @@ return {
   drawRectOutline = drawRectOutline,
   drawRect = drawRect,
   drawText = drawText,
+  drawLine = drawLine,
   drawEllipseOutline = drawEllipseOutline,
   drawEllipse = drawEllipse,
   drawLineThin = drawLineThin,

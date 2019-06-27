@@ -17,6 +17,12 @@ https://lhartikk.github.io/jekyll/update/2017/07/09/chapter6.html
 
 autocraft computer parts 
 
+https://oc.cil.li/topic/683-3d-printing-with-schematics/
+https://oc.cil.li/topic/560-i-printed-a-house/
+https://oc.cil.li/topic/1781-oetf-14-ohml/
+
+https://github.com/roshancode/Audio-react
+
 http://www.computercraft.info/forums2/index.php?/topic/29809-workspace-desktop-grid-multitasking-in-computercraft/
 http://www.computercraft.info/forums2/index.php?/forum/33-pocket-programs/
 http://www.computercraft.info/forums2/index.php?/forum/21-turtle-programs/
