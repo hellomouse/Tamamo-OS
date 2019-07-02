@@ -35,7 +35,6 @@ local min = math.min
 local max = math.max
 local abs = math.abs
 local sqrt = math.sqrt
-local concat = table.concat
 
 -- Constants
 local fillIfAreaIsGreaterThan = 40
@@ -269,17 +268,16 @@ function update(force)
   -- searchX = x value of end of repeated length
   -- searchIndex = index of end of repeated length
   -- currBg = temp var to store bg for current index since change buffer gets reset
-  -- tempLine = temp table to store line of chars
+  -- charCount = character counter for repeated string optimization
   -- j = temp loop variable
   -- colorChanges = dict of bg / fg color pixels grouped togther
   -- transparentChange = variable to track if any change vector is transparent
   -- noEmptySpaces = variable to track if there are not any empty spaces (no foreground chars)
   local i = getIndex(updateBoundX1, updateBoundY1)
   local lineChange = bufferWidth - updateBoundX2 + updateBoundX1 - 1
-  local fillw, subgroup, searchX, searchIndex, currBg, j
+  local fillw, subgroup, searchX, searchIndex, currBg, charcount, j
   local colorChanges = {}
   local aFgValue = nil
-  local tempLine = {}
 
   for y = updateBoundY1, updateBoundY2 do
 		x = updateBoundX1
@@ -307,7 +305,7 @@ function update(force)
         -- Search for repeating chunks of characters of the same
         -- background
         while searchX <= updateBoundX2 do
-          if changeBg[i] ~= changeBg[searchIndex] then break end
+          if not areEqual(1, 1, changeBg[i], changeBg[searchIndex], 1, 1) then break end
 
           -- Update current "image" buffer
           buffSym[searchIndex], buffBg[searchIndex], buffFg[searchIndex] = 
@@ -332,24 +330,24 @@ function update(force)
           end
 
           subgroup = colorChanges[currBg][changeFg[j]]
-          tempLine = { changeSym[j] }
           
           -- Check for repeated strings
+          charcount = 1
           for k = j + 1, i + fillw - 1 do
-            if changeFg[j] ~= changeFg[k] and changeSym[k] ~= " " then
+            if not areEqual(buffSym[j], changeSym[k], buffBg[j], changeBg[k], buffFg[j], changeFg[k]) then
               break
             end
-            tempLine[#tempLine + 1] = changeSym[k]
+            charcount = charcount + 1
 
             -- Change buffer reset
             changeBg[k], changeFg[k], changeSym[k] = -17, -17, " "
           end
           
-          subgroup[#subgroup + 1] = {x + j - i, y, concat(tempLine)}
+          subgroup[#subgroup + 1] = {x + j - i, y, changeSym[j], charcount}
 
           -- Reset the change buffer
           changeBg[j], changeFg[j], changeSym[j] = -17, -17, " "
-          j = j + #tempLine
+          j = j + charcount
         end
 
         -- Increment x and i up to searchX - 1
@@ -370,6 +368,10 @@ function update(force)
   end
 
   -- Draw color groups
+  local t -- Temp variable
+  local setCounter = 0
+  local fillCounter = 1
+
   for bgcolor, group1 in pairs(colorChanges) do
     GPUsetBackground(absColor(bgcolor), bgcolor < 0)
 
@@ -380,7 +382,28 @@ function update(force)
       else GPUsetForeground(absColor(fgcolor), fgcolor < 0) end
 
       for i = 1, #group2 do
-        GPUset(group2[i][1], group2[i][2], group2[i][3])
+        t = group2[i]
+
+        if t[3] == "⠀" or t[3] == " " then -- First is braille 0x2800
+          -- If spaces then use fill as it is less energy intensive
+          if t[4] > 1 then
+            GPUfill(t[1], t[2], t[4], 1, " ")
+            fillCounter = fillCounter + 1
+            goto continue
+          end
+        end
+
+        -- Use fill or set depending on setToFillRatio to try to max out
+        -- free gpu calls before they are queued to next tick
+        if setCounter <= fillCounter * setToFillRatio then
+          GPUset(t[1], t[2], rep(t[3], t[4]))
+          setCounter = setCounter + 1
+        else 
+          GPUfill(t[1], t[2], t[4], 1, t[3]) 
+          fillCounter = fillCounter + 1
+        end
+
+        ::continue::
       end
     end
   end
@@ -576,7 +599,8 @@ function fill(x, y, w, h, symbol, dontUpdate)
     GPUsetForeground(currentFg)
     GPUfill(x, y, w, h, symbol)
   elseif not dontUpdate then update() 
-  else end -- Do nothing
+  else -- Do nothing
+  end
 
   return true
 end
