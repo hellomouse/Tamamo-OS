@@ -43,10 +43,6 @@ add a ram check program to help debug
 some way to access raw GPU functions no update
 
 
-TODO use copy() somehow when scrolling to lessen lag
-
-
-
 Sectionlike structure of the man program
 
 gui idea 
@@ -66,12 +62,17 @@ component.ocemu.log
 
 chart better rounding? - use percentage like in os thing
 
-fix screen copy ignore out of bounds if out of screen
-copy if set true try to copy part if possible
-copy dont directly update
+
+copy dont directly update option?
 
 
-codeview selections and indentation lines
+codeview selections
+
+screen buffer combine the 2 for loops to maximize speed
+
+option to use optimized scroll in panel and codeview
+
+
 
 gui: 
 list (tabs / vertical)
@@ -108,6 +109,8 @@ check startCol is integer, etc...?
 GUI needs a lot more strict checking ^
 
 
+test os.sleep repeating in update()
+
 
 
 color pciker - needs some sort of z-indexing
@@ -116,9 +119,6 @@ color pciker - needs some sort of z-indexing
 
 color picker should be seperate GUI object adedd
 
-
-
-perhaps a slight optimization, but set() could just look for equal bg / fg but not char necessarily
 
 
 
@@ -157,6 +157,11 @@ optimize wiht https://oc.cil.li/topic/243-memory-management/
 
 
 
+optimize screen even more with the comparison thing
+
+
+
+
 draw \triangle
 
 semipixel ellipse outline needs to be better 
@@ -176,6 +181,10 @@ optimizations that don't work
 - try to fill with curernt bg color first then try others
 - try to fill with current fg
 - not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
+
+TODO use copy() somehow when scrolling to lessen lag
+- in both codeview and panel
+- doesn't work as it may copy stuff overlapping
 
 note that x scrollbars are smaller than y scrollbars due to 2x char height
 

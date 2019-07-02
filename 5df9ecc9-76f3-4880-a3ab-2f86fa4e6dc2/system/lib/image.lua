@@ -197,6 +197,7 @@ function api.loadHDG(path)
   local restOfData = decompress(data:read("*a"))
   local returned = HDGImage:create(header .. restOfData)
   returned:prepare()
+  data:close()
   return returned
 end
 
