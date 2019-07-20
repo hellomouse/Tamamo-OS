@@ -22,6 +22,7 @@ local lshift = bit32.lshift
 
 local setChar = screen.setChar
 local setPaletteColor = component.gpu.setPaletteColor
+local floor = math.floor
 
 -- Populate index of braille characters
 -- (Feature removed to save RAM)
@@ -33,12 +34,11 @@ local api = {}
 
 -- Return the correct hex color value or palette index for a given
 -- byte value saved in HDG (0-15 are palettes, others are fixed)
--- Returns { index|color int, is_palette }
+-- Returns index|color_int
 local function getcolor(val, palette_size)
   if val < palette_size then
-    return {val, true}
-  end
-  return {getPresetPalette(val - 14), false} -- {preset_palette[val - 14], false}
+    return -val - 1 end
+  return getPresetPalette(val - 14)
 end
 
 -- HDG Image class
@@ -96,7 +96,7 @@ function HDGImage:draw(x, y)
   end
 
   x, y = x or 1, y or 1
-  x, y = math.floor(x), math.floor(y)
+  x, y = floor(x), floor(y)
 
   -- Populate global palette
   for i = 1, self.palette_size do
@@ -109,8 +109,8 @@ function HDGImage:draw(x, y)
   local gw, gh = screen.getResolution()
 
   for i = 1, self.w * self.h do 
-    local x1 = math.floor((i - 1) % self.w) + x
-    local y1 = math.floor((i - 1) / self.w) + y
+    local x1 = floor((i - 1) % self.w) + x
+    local y1 = floor((i - 1) / self.w) + y
 
     -- Don't render off screen
     if x1 > gw or y1 > gh then
@@ -120,7 +120,7 @@ function HDGImage:draw(x, y)
     local a = getcolor(self.bg[i], self.palette_size)
     local b = getcolor(self.fg[i], self.palette_size)
 
-    setChar(x1, y1, b[1], a[1], uchar(bor(0x2800, self.sym[i])), b[2], a[2]) -- braille[1 + self.sym[i]]
+    setChar(x1, y1, b, a, uchar(bor(0x2800, self.sym[i]))) -- braille[1 + self.sym[i]]
     ::continue::
   end
 

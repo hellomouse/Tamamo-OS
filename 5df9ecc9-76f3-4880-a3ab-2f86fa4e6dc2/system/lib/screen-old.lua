@@ -671,7 +671,7 @@ end
 
 -- Draw a rectangle (border) with current bg and fg colors,
 -- with optional alpha
-function drawRectOutline(x, y, w, h, alpha)
+function drawRectangleOutline(x, y, w, h, alpha)
   if alpha == 0 then return false end -- No alpha no render
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
@@ -721,7 +721,7 @@ end
 -- Fill a rectangle with the current bg and fg colors,
 -- with optional alpha. Because of alpha
 -- we have to reimplement fill code
-function drawRect(x, y, w, h, alpha)
+function drawRectangle(x, y, w, h, alpha)
   if alpha == 0 then return false end -- No alpha no render
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x > bufferWidth or y > bufferHeight then return false end
@@ -808,7 +808,7 @@ function drawLine(x1, y1, x2, y2, alpha)
 
   -- Special case for vertical lines
   if x1 == x2 then
-    drawRect(x1, y1, 1, y2 - y1, alpha)
+    drawRectangle(x1, y1, 1, y2 - y1, alpha)
     return true
   end
 
@@ -1058,8 +1058,8 @@ return {
   getResolution = getResolution,
   getWidth = getWidth,
   getHeight = getHeight,
-  drawRectOutline = drawRectOutline,
-  drawRect = drawRect,
+  drawRectangleOutline = drawRectangleOutline,
+  drawRectangle = drawRectangle,
   drawText = drawText,
   drawLine = drawLine,
   drawEllipseOutline = drawEllipseOutline,

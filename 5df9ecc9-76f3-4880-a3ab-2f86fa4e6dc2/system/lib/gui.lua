@@ -115,6 +115,7 @@ local find = string.find
 
 local insert = table.insert
 local remove = table.remove
+local sort = table.sort
 
 local floor = math.floor
 local ceil = math.ceil
@@ -406,7 +407,7 @@ local function drawPanel(panel)
   if panel.yScrollbar then dy = -panel.yScrollbar.value end
 
   screen.setBackground(panel.color)
-  screen.drawRect(panel.x, panel.y, panel.width, panel.height, panel.bgAlpha)
+  screen.drawRectangle(panel.x, panel.y, panel.width, panel.height, panel.bgAlpha)
   panel.container:draw(nil, dx, dy)
 
   screen.setDrawingBound(panel.x, panel.y, panel.x + panel.width - 1, panel.y + panel.height - 1)
@@ -807,10 +808,10 @@ local function drawButton(button)
 
   -- Framed buttons do not get the solid fill
   if button.framed then
-    screen.drawRectOutline(button.x, button.y, button.width, button.height, button.bgAlpha)
+    screen.drawRectangleOutline(button.x, button.y, button.width, button.height, button.bgAlpha)
     drawText(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text, 1, true)
   else  
-    screen.drawRect(button.x, button.y, button.width, button.height, button.bgAlpha)
+    screen.drawRectangle(button.x, button.y, button.width, button.height, button.bgAlpha)
     drawText(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text)
   end
 end
@@ -1149,7 +1150,7 @@ local function drawInput(input)
   end
 
   -- Background
-  screen.drawRect(input.x, input.y, input.width, input.height, input.bgAlpha)
+  screen.drawRectangle(input.x, input.y, input.width, input.height, input.bgAlpha)
 
   -- Text is offset from left by 1 and right by 1
   -- The text is limited by the width of the input and will scroll automatically
@@ -1360,7 +1361,7 @@ end
 -- Scroll bar --
 ------------------------------------------------
 local function drawScrollBar(scrollbar)
-  local cursorSize = floor(scrollbar.size / scrollbar.totalScrollSize * scrollbar.size)
+  local cursorSize = ceil(scrollbar.size / scrollbar.totalScrollSize * scrollbar.size)
   local scrollRatioLow = floor(scrollbar.value / scrollbar.totalScrollSize * (scrollbar.size - cursorSize))
   local scrollRatioHigh = scrollRatioLow + cursorSize + 1
 
@@ -1484,22 +1485,23 @@ end
 local function formatChartValue(val, round)
   if round <= 0 then return "" .. math.floor(val + 0.5) end -- Round to nearest integer
   return string.format("%." .. round .. "f", val)
-end 
+end
 
 local function drawChart(chart)
   -- Search for min / max value for both x and y
   if chart.minX == nil then
     local xVals, yVals = chart.xValues, chart.yValues
-    local minX, maxX, minY, maxY = xVals[1], xVals[1], yVals[1], yVals[1]
+    local minY, maxY = yVals[1], yVals[1] -- min/max y need to be searched for
     
-    for i = 2, #xVals do
-      if xVals[i] < minX then minX = xVals[i]
-      elseif xVals[i] > maxX then maxX = xVals[i] end
+    -- Min/max x are first/last since x should be sorted
+    chart.minX, chart.maxX = xVals[1], xVals[#xVals]
+
+    for i = 2, #yVals do
       if yVals[i] < minY then minY = yVals[i]
       elseif yVals[i] > maxY then maxY = yVals[i] end 
     end
 
-    chart.minX, chart.maxX, chart.minY, chart.maxY = minX, maxX, minY, maxY
+   chart.minY, chart.maxY = minY, maxY
   end
 
   local xOffset = max(
@@ -1515,14 +1517,15 @@ local function drawChart(chart)
   drawText(chart.x + xOffset - 1, chart.y + chart.height - 2, "┗", 1, true)
 
   -- Render axis labels
-  local xAxisIncPercentage = chart.xSpacing / (chart.maxX - chart.minX)
-  local yAxisIncPercentage = chart.ySpacing / (chart.maxY - chart.minY)
-  local xIncPixel = floor(xAxisIncPercentage * (chart.width - 2 - xOffset))
-  local yIncPixel = floor(yAxisIncPercentage * (chart.height - 2))
+  local xIncPixel = floor(chart.xSpacing * (chart.width - 2 - xOffset))
+  local yIncPixel = floor(chart.ySpacing * (chart.height - 2))
 
   local xLabel, yLabel
+  local xCount, yCount = 0, 0
+
   for y = chart.y, chart.y + chart.height - 2, yIncPixel do
-    yLabel = formatChartValue(chart.maxY - (y - chart.y) / (chart.height - 2) * (chart.maxY - chart.minY), chart.round)
+    yLabel = formatChartValue(chart.maxY - yCount * (chart.maxY - chart.minY), chart.round)
+    yCount = yCount + chart.ySpacing
 
     screen.setForeground(chart.labelColor)
     drawText(chart.x, y, yLabel, 1, true)
@@ -1531,8 +1534,10 @@ local function drawChart(chart)
     drawText(chart.x + #yLabel, y, chart.ySuffix, 1, true)
   end
   for x = chart.x + xOffset, chart.x + chart.width, xIncPixel do
-    xLabel = formatChartValue(chart.minX + (x - chart.x - xOffset) / (chart.width - xOffset) * (chart.maxX - chart.minX), chart.round)
-    
+    xLabel = formatChartValue(chart.minX + xCount * (chart.maxX - chart.minX), chart.round)
+    xCount = xCount + chart.xSpacing
+    x = x - #xLabel * 0.7 -- 0.7 is arbritrary offset to make sure labels don't go offscreen
+
     screen.setForeground(chart.labelColor)
     drawText(x, chart.y + chart.height - 1, xLabel, 1, true)
 
@@ -1541,6 +1546,73 @@ local function drawChart(chart)
   end
 
   -- Draw the actual chart itself
+
+  -- TODO this is all broken
+
+  local cellBound, cell1Max, cell2Max
+  local currentI = 1
+  local cellSize = (chart.maxX - chart.minX) / (chart.width - 2 - xOffset) / 2
+
+  for x = 0, chart.width - 2 - xOffset do
+    -- Each x value is 2 "cells", which are half a braille character
+    -- We iterate all the values between the bounds of each cell, take
+    -- the max of each and display it. We also combine overlapping regions
+    -- into solid characters since we can't draw pixels, only braille characters
+    -- ie:
+    -- |      -->     |
+    -- ||             []     Where [] is a solid block
+    cellBound = cellSize * 2 * x + chart.minX
+
+    -- Max in cell 1
+    for i = currentI, #chart.xValues do
+      currentI = i
+      if chart.xValues[i] < cellBound or chart.xValues[i] > cellBound + cellSize then
+        break 
+      end
+      if cell1Max == nil or chart.yValues[i] > cell1Max then
+        cell1Max = chart.yValues[i]
+      end
+    end
+
+    -- Max in cell 2
+    for i = currentI, #chart.xValues do
+      currentI = i
+      if chart.xValues[i] < cellBound + cellSize or chart.xValues[i] > cellBound + cellSize * 2 then
+        break 
+      end
+      if cell2Max == nil or chart.yValues[i] > cell2Max then
+        cell2Max = chart.yValues[i]
+      end
+    end
+
+    -- Render current cell
+
+    -- TODO braille shit for y
+    if cell1Max == nil and cell2Max == nil then -- Do nothing
+    elseif cell1Max ~= nil and cell2Max == nil then -- Left braille
+
+    elseif cell1Max == nil and cell2Max ~= nil then -- Right braille
+
+    else -- Fill higher then:
+
+
+    end
+
+    component.ocemu.log(currentI, cell1Max, cell2Max)
+  end
+end
+
+-- Helper function
+-- From https://stackoverflow.com/questions/28443085/how-to-sort-two-tables-simultaneously-by-using-one-of-tables-order
+local sort_relative = function(ref, t, cmp)
+  local n = #ref
+  assert(#t == n)
+  local r = {}
+  for i=1, n do r[i] = i end
+  if not cmp then cmp = function(a, b) return a < b end end
+  sort(r, function(a, b) return cmp(ref[a], ref[b]) end)
+  for i=1, n do r[i] = t[r[i]] end
+  return r
 end
 
 function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor,
@@ -1574,20 +1646,51 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
   chart.xSpacing, chart.ySpacing = xSpacing, ySpacing
   chart.xSuffix, chart.ySuffix = xSuffix, ySuffix
   chart.fillChart = fillChart
-  
+
+  yValues = sort_relative(xValues, yValues)
+  sort(xValues, function(a, b) return a < b end)
+
   chart.xValues = xValues
   chart.yValues = yValues
   chart.round = floor(round)
 
   chart.update = function(xValues, yValues)
     chart.minX = nil -- Force update all min/max
+    sort_relative(xValues, yValues)
     chart.xValues, chart.yValues = xValues, yValues
     chart:draw()
   end
   chart.addPoint = function(x, y)
-    chart.minX = nil -- Force update all min/max
+    if chart.minX ~= nil then
+      if x < chart.minX then chart.minX = x end
+      if x > chart.maxX then chart.maxX = x end
+      if y < chart.minY then chart.minY = y end
+      if y > chart.maxY then chart.maxY = y end
+    else
+      chart.minX = nil -- Force update all min/max
+    end
+
+    local added = false
+    for i = 1, #chart.xValues do
+      if x < chart.xValues[i] then
+        added = true
+        insert(chart.xValues, i - 1, x)
+        insert(chart.yValues, i - 1, y)
+      end
+    end
+    if not added then
+      chart.xValues[#chart.xValues + 1] = x
+      chart.yValues[#chart.yValues + 1] = y
+    end
+
     chart.xValues[#chart.xValues + 1] = x
     chart.yValues[#chart.yValues + 1] = y
+    chart:draw()
+  end
+  chart.removePoint = function(i)
+    chart.minX = nil -- Force update all min/max
+    remove(chart.xValues, i)
+    remove(chart.yValues, i)
     chart:draw()
   end
 
@@ -1602,7 +1705,7 @@ end
 ------------------------------------------------
 local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme, indentSize)
   -- Base text (assumed you set base color already)
-  drawText(x, y, line)
+  drawText(x, y, line, 1, true)
 
   -- Indent line
   local indentIndex = 1
@@ -1645,12 +1748,13 @@ local function drawCodeView(codeview)
 
   local lineNumberBarWidth = #(dy + codeview.height .. "") + 2
   local maxLineLength = 0
-  local currentLineLength, numberToDraw
+  local currentLineLength, numberToDraw, selectSize
+
+  -- Background
+  screen.setBackground(codeview.colorScheme.codeBackground)
+  screen.drawRectangle(codeview.x + lineNumberBarWidth, codeview.y, codeview.width - lineNumberBarWidth, codeview.height)
 
   -- Render code
-  screen.setBackground(codeview.colorScheme.codeBackground)
-  screen.drawRect(codeview.x + lineNumberBarWidth, codeview.y, codeview.width - lineNumberBarWidth, codeview.height)
-
   for line = max(1, dy), max(1, dy) + codeview.height - 1 do
     if codeview.lines[line] == nil then goto continue end
 
@@ -1666,28 +1770,52 @@ local function drawCodeView(codeview)
         codeview.y + line - dy,
         codeview.syntaxPatterns, codeview.colorScheme, codeview.indentSize)
     else
-      drawText(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy,
-        codeview.lines[line])
+      drawText(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy, codeview.lines[line])
     end
-
-    -- Text selections
-    -- codeview.colorScheme.selection
-    -- screen.setBackground(codeview.highlights[line])
-    -- drawText(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
 
     -- Highlight the current text
     if codeview.highlights and codeview.highlights[line] then
-      local selectSize = codeview.width - lineNumberBarWidth
-      if codeview.scrollable then
-        selectSize = selectSize - 1 -- Leave room for scrollbar
-      end 
-
+      selectSize = codeview.width - lineNumberBarWidth
       screen.setBackground(codeview.highlights[line])
       drawText(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
       screen.setBackground(codeview.colorScheme.codeBackground)
     end
       
     ::continue::
+  end
+
+  -- Render text selections
+  if codeview.selections then
+    local selection
+    screen.setBackground(codeview.colorScheme.selection)
+    for i = 1, #codeview.selections do
+      selection = codeview.selections[i]
+
+      -- Same line selection
+      if selection[1] == selection[3] then
+        drawText(codeview.x + selection[2] - dx + lineNumberBarWidth, 
+          codeview.y + selection[1] - dy, rep(" ", selection[4] - selection[2] + 1))
+      -- Different line selection
+      else
+        -- Draw first selection rectangle
+        drawText(codeview.x + selection[2] - dx + lineNumberBarWidth,
+          codeview.y + selection[1] - dy, rep(" ", codeview.width))
+
+        -- Middle slection rectangle
+        if selection[3] > selection[1] + 1 then
+          for line = selection[1] + 1, selection[3] - 1 do
+            drawText(codeview.x + lineNumberBarWidth - dx + 1,
+              codeview.y + line - dy, rep(" ", codeview.width))
+          end
+        end
+
+        -- Last selection rectangle
+        drawText(codeview.x + 1 - dx + lineNumberBarWidth,
+          codeview.y + selection[3] - dy, rep(" ", selection[4] - dx))
+      end
+    end
+
+    screen.setBackground(codeview.colorScheme.codeBackground)
   end
 
   -- Update and render scrollbars
@@ -1699,14 +1827,18 @@ local function drawCodeView(codeview)
       codeview.xScrollbar:drawObject()
     end
     if #codeview.lines > codeview.height then
+      -- Extra rectangle behind to hide any overlapping selections / highlights
+      screen.setBackground(codeview.colorScheme.codeBackground)
+      screen.drawRectangle(codeview.x + codeview.width - 1, codeview.y, 1, codeview.height)
+
       codeview.yScrollbar.totalScrollSize = #codeview.lines - codeview.height
       codeview.yScrollbar:drawObject()
     end
   end
 
-    -- Render line numbers
+  -- Render line numbers
   screen.setBackground(codeview.colorScheme.lineNumberBackground)
-  screen.drawRect(codeview.x, codeview.y, lineNumberBarWidth, codeview.height)
+  screen.drawRectangle(codeview.x, codeview.y, lineNumberBarWidth, codeview.height)
   screen.setForeground(codeview.colorScheme.lineNumberColor)
 
   for n = 1, codeview.height do

@@ -43,7 +43,8 @@ https://github.com/TetraSource/OC-programs/wiki/Bundle
 
 TPM - tamamo package manager (thx asdfbot)
 
-
+https://github.com/cyb0124/OCRemote 
+https://github.com/giann/croissant
 clone hard drive
 
 https://oc.cil.li/topic/443-comprehensive-unicode-reference-images/

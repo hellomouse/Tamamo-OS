@@ -60,13 +60,9 @@ internal clipboard
 component.ocemu.log
 
 
-chart better rounding? - use percentage like in os thing
 
 
 copy dont directly update option?
-
-
-codeview selections
 
 screen buffer combine the 2 for loops to maximize speed
 
@@ -78,7 +74,6 @@ gui:
 list (tabs / vertical)
 table
 dropdown box 
-code view 
 chart
 tree list
 textarea
@@ -156,22 +151,55 @@ make base64 lib optional
 optimize wiht https://oc.cil.li/topic/243-memory-management/
 
 
+TODO use copy() somehow when scrolling to lessen lag
+- in both codeview and panel
+- doesn't work as it may copy stuff overlapping
+
+note that x scrollbars are smaller than y scrollbars due to 2x char height
 
 optimize screen even more with the comparison thing
 
+https://git.daelvn.ga/filekit/
 
 
-
-draw \triangle
-
-semipixel ellipse outline needs to be better 
+draw triangle
 
 semipixel curve
+
+drawline respect semipixel coordinates
+same for other thin methods
+
+tidy var names 
+- currentFg, changeFg
+
+condense screen code - look at mine OS 
+    something like
+    - also <is in screen bound> function
+    - in general reduce reduant code
+
+codeview breaks if scroll too much see test4
+
+
+try removing checkargs for sets and shit in code
+
+running img twice crashes?? - image not unloaded!
 
 
 image masking - graphics object!
 
+check drawline x end value is consistent
 
+
+check consistentcy of bg / fg colors
+- alternateively have color as an argument
+
+
+write tests!
+
+
+tamamo noble phantasm as boot
+
+出雲に神在り、是自在にして禊の証、神宝宇迦之鏡也――『 水天日光天照八野鎮石すいてんにっこうあまてらす やのしずいし……なんちゃって
 
 
 optimizations that don't work 
@@ -182,11 +210,7 @@ optimizations that don't work
 - try to fill with current fg
 - not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
 
-TODO use copy() somehow when scrolling to lessen lag
-- in both codeview and panel
-- doesn't work as it may copy stuff overlapping
 
-note that x scrollbars are smaller than y scrollbars due to 2x char height
 
 
 
@@ -202,12 +226,6 @@ boot logo solid color?
 make boot work only if there is a gpu
  - organize boot sequence code!
 
-
-
-instead of sorting by color with table use fancy shit
-- save changes in the changes buffer - for first 128 indexes add to w * h for color storage
-- then switch to used indexes
-- have the things reference each other
 
 
 terminal backgrounds!
