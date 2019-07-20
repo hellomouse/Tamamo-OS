@@ -18,28 +18,42 @@ local screen = require("screen")
 
 local image = require("image")
 local x = image.loadHDG("/system/assets/boot-logo.hdg")
-x:draw(1, 10)
---
-screen.copy(1, 10, x.w, x.h, 39, 0)
-screen.copy(1, 10, x.w, x.h, 0, -14)
+-- x:draw(1, 10)
+-- --
+-- screen.copy(1, 10, x.w, x.h, 39, 0)
+-- screen.copy(1, 10, x.w, x.h, 0, -14)
 
-screen.setForeground(0xFFFFFF)
-screen.update()
+-- screen.setForeground(0xFFFFFF)
+-- screen.update()
 -- screen.drawRectOutline(20, 20, 80, 20, 1)
--- screen.setBackground(0xFF0000)
--- --screen.drawEllipse(30, 30, 20, 10, 0.5)
+screen.setBackground(0x0000)
+screen.drawEllipse(30, 30, 20, 10, 0.9)
+screen.drawEllipseThin(50, 30, 20, 10, 0.5)
+
+screen.drawEllipseThin(130, 30, 20, 10, 0.5)
 
 -- screen.update()
 
 -- screen.drawText(40, 40, "test")
--- screen.setForeground(0x00FF00)
--- screen.setBackground(0x00FF00)
--- --screen.drawEllipseOutlineThin(40, 30, 20, 20, 0.5)
 
--- screen.drawLine(10, 10, 50, 20, 0.25)
--- screen.drawLine(10, 10, 20, 40, 0.5)
--- screen.drawLine(10, 10, 10, 40, 0.75)
--- screen.drawLine(10, 10, 50, 10)
+screen.setBackground(0x00FF00)
+screen.drawEllipseOutlineThin(40, 30, 20, 20)
+screen.setBackground(0x00FFFFF)
+screen.drawEllipseThin(60, 30, 20, 20, 0.5)
+
+screen.drawLineThin(10, 10, 50, 20, 0.25)
+screen.drawLineThin(10, 10, 20, 40, 0.5)
+screen.drawLineThin(10, 10, 10, 40, 0.75)
+screen.drawLineThin(10, 10, 50, 10, 1, "t")
+
+screen.drawLineThin(50.5, 10, 50, 15, 1)
+
+
+screen.drawLine(20, 10, 60, 20, 0.25)
+screen.drawLine(20, 10, 30, 40, 0.5)
+screen.drawLine(20, 10, 20, 40, 0.75)
+screen.drawLine(20, 10, 60, 10, 1, "t")
+
 
 --os.sleep(10)
 --screen.update()

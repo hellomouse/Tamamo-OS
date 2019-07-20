@@ -43,3 +43,11 @@ function print(...)
   stdout:setvbuf(old_mode, old_size)
   stdout:flush()
 end
+
+function checkMultiArg(ctype, ...)
+  for index, value in ipairs({...}) do
+    if type(value) ~= ctype then
+      error("Bad argument #" .. index .. " (" .. ctype .. " expected, got " .. type(value) .. ")")
+    end
+  end
+end

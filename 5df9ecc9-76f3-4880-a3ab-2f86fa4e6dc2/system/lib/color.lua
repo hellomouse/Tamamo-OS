@@ -41,8 +41,8 @@ end
 
 function api.blend(base, color, amount)
   amount = amount or 1
-  if amount >= 1 then return color end
-  if amount <= 0 then return base end
+  if amount >= 1 then return base end
+  if amount <= 0 then return color end
 
   local r1, g1, b1, r2, g2, b2
   r1, g1, b1 = api.toRGBFromHex(base)
