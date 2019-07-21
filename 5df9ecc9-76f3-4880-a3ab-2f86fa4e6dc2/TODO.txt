@@ -64,7 +64,6 @@ component.ocemu.log
 
 copy dont directly update option?
 
-screen buffer combine the 2 for loops to maximize speed
 
 option to use optimized scroll in panel and codeview
 
@@ -157,41 +156,35 @@ TODO use copy() somehow when scrolling to lessen lag
 
 note that x scrollbars are smaller than y scrollbars due to 2x char height
 
-optimize screen even more with the comparison thing
 
-https://git.daelvn.ga/filekit/
+https://git.daelvn.ga/filekit/ for filesystem
 
 
-draw triangle
-
-semipixel curve
 
 drawline respect semipixel coordinates
 same for other thin methods
 
 tidy var names 
-- currentFg, changeFg
+- in functions too
 
-condense screen code - look at mine OS 
-    something like
-    - also <is in screen bound> function
-    - in general reduce reduant code
+
+check consistentcy of bg / fg colors
+- alternateively have color as an argument
 
 codeview breaks if scroll too much see test4
 
 
-try removing checkargs for sets and shit in code
 
-running img twice crashes?? - image not unloaded!
+semipixel rect
+- also regular rect outline and rename current to semipixel rect outline and fix this in GUI
 
+gui range slider draws first, maybe not respecting update?
 
 image masking - graphics object!
 
 check drawline x end value is consistent
 
 
-check consistentcy of bg / fg colors
-- alternateively have color as an argument
 
 
 write tests!
@@ -211,6 +204,7 @@ optimizations that don't work
 - not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
 
 
+draw triangle
 
 
 
