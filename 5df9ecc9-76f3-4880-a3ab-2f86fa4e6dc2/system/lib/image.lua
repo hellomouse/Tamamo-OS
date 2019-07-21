@@ -106,22 +106,21 @@ function HDGImage:draw(x, y)
   -- Keep original colors
   local bgi = screen.getBackground()
   local fgi = screen.getForeground()
-  local gw, gh = screen.getResolution()
+  local screenWidth, screenHeight = screen.getResolution()
 
-  for i = 1, self.w * self.h do 
-    local x1 = floor((i - 1) % self.w) + x
-    local y1 = floor((i - 1) / self.w) + y
+  local index, foregroundColor, backgroundColor
+  for x1 = 1, self.w do
+    for y1 = 1, self.h do
+      if x + x1 - 1 > screenWidth or y + y1 - 1 > screenHeight then
+        goto continue end -- Don't render off screen
 
-    -- Don't render off screen
-    if x1 > gw or y1 > gh then
-      goto continue
+      index = self.w * (y1 - 1) + x1
+      backgroundColor = getcolor(self.bg[index], self.palette_size)
+      foregroundColor = getcolor(self.fg[index], self.palette_size)
+
+      setChar(x + x1 - 1, y + y1 - 1, foregroundColor, backgroundColor, uchar(bor(0x2800, self.sym[index]))) -- braille[1 + self.sym[i]]
+      ::continue::
     end
-
-    local a = getcolor(self.bg[i], self.palette_size)
-    local b = getcolor(self.fg[i], self.palette_size)
-
-    setChar(x1, y1, b, a, uchar(bor(0x2800, self.sym[i]))) -- braille[1 + self.sym[i]]
-    ::continue::
   end
 
   screen.update()

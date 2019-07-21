@@ -39,7 +39,7 @@ tape looper
 https://oc.cil.li/topic/784-computronics-tape-drive-looper/
 
 https://github.com/TetraSource/OC-programs/wiki/Bundle
-
+http://www.computercraft.info/forums2/index.php?/topic/29701-ascii-a-ascii-visualizer/ 
 
 TPM - tamamo package manager (thx asdfbot)
 

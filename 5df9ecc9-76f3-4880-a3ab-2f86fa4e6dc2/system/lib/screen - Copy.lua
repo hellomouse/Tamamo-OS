@@ -237,7 +237,7 @@ local function setDrawingBound(x1, y1, x2, y2, useCurrent)
     end
   else
     -- Overwrite any changes
-    drawX1, drawY1, drawX2, drawY2 = max(1, x1), max(1, y1), min(bufferWidth, x2), min(bufferHeight, y2)
+    drawX1, drawY1, drawX2, drawY2 = x1, y1, x2, y2
   end
 
   -- Bound checks
@@ -306,7 +306,7 @@ local function getForeground()
   return absColor(currentForeground), currentForeground < 0
 end
 
-local function set(x, y, string, vertical)
+local function set(x, y, string, vertical, dontUpdate)
   checkMultiArg("number", x, y)
   checkArg(3, string, "string")
 
@@ -317,6 +317,8 @@ local function set(x, y, string, vertical)
       setChar(x + delta, y, currentForeground, currentBackground, sub(string, delta + 1, delta + 1))
     end
   end
+
+  if not dontUpdate then update() end
 end
 
 -- Copy a region by a displacement tx and ty
@@ -383,7 +385,7 @@ local function copy(x, y, w, h, tx, ty)
         bufferBackground[i], bufferForeground[i], bufferSymbol[i] = bg, fg, sym
       else
         currentBackground, currentForeground = bg, fg
-        set(x1 + tx, y1 + ty, sym)
+        set(x1 + tx, y1 + ty, sym, false, true)
       end
 
       ::continue::
@@ -394,21 +396,44 @@ local function copy(x, y, w, h, tx, ty)
   if not canDirectlyCopy and not canPartialCopy then update() end
 end 
 
-local function fill(x, y, w, h, symbol)
+local function fill(x, y, w, h, symbol, dontUpdate)
   checkMultiArg("number", x, y, w, h)
   checkArg(5, symbol, "string")
 
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   
   if len(symbol) ~= 1 then return false end
-  if x > bufferWidth or y > bufferHeight then return false end
+  if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return false end
   if w < 1 or h < 1 then return false end
+
+  -- Directly fill if area is large enough and we're directly updating
+  local useGpuFill = fillIfAreaIsGreaterThan <= w * h and not dontUpdate
+  local i
+
+  -- We can't use gpu fill directly though if it exceeds the current bounds
+  if x < drawX1 or x + w - 1 < drawX1 or y < drawY1 or y + h - 1 < drawY1 or
+     x > drawX2 or x + w - 1 > drawX2 or y > drawY2 or y + h - 1 > drawY2 then
+    useGpuFill = false
+  end
 
   for x1 = x, x + w - 1 do
     for y1 = y, y + h - 1 do
-      set(x1, y1, symbol)
+      if useGpuFill then
+        i = getIndex(x1, y1)
+        bufferBackground[i], bufferForeground[i], bufferSymbol[i] = currentBackground, currentForeground, symbol
+        changeBackgrounds[i], changeForegrounds[i], changeSymbols[i] = -17, -17, " "
+      else 
+        set(x1, y1, symbol, false, true)
+      end
     end
   end
+  
+  if useGpuFill then
+    GPUsetBackground(currentBackground)
+    GPUsetForeground(currentForeground)
+    GPUfill(x, y, w, h, symbol)
+  elseif not dontUpdate then update() 
+  else end -- Do nothing
 
   return true
 end
@@ -517,28 +542,28 @@ local function drawRectangleOutline(x, y, w, h, alpha)
 
   -- Corners
   setAdaptive(x, y, cfg, cbg, alpha, true, false)
-  set(x, y, "┌")
+  set(x, y, "┌", false, true)
   setAdaptive(x + w - 1, y, cfg, cbg, alpha, true, false)
-  set(x + w - 1, y, "┐")
+  set(x + w - 1, y, "┐", false, true)
   setAdaptive(x, y + h - 1, cfg, cbg, alpha, true, false)
-  set(x, y + h - 1, "└")
+  set(x, y + h - 1, "└", false, true)
   setAdaptive(x + w, y + h - 1, cfg, cbg, alpha, true, false)
-  set(x + w - 1, y + h - 1, "┘")
+  set(x + w - 1, y + h - 1, "┘", false, true)
 
   -- Top and bottom
   for x1 = x + 1, x + w - 2 do
     setAdaptive(x1, y, cfg, cbg, alpha, true, false)
-    set(x1, y, "─")
+    set(x1, y, "─", false, true)
     setAdaptive(x1, y + h - 1, cfg, cbg, alpha, true, false)
-    set(x1, y + h - 1, "─")
+    set(x1, y + h - 1, "─", false, true)
   end
 
   -- Sides
   for y1 = y + 1, y + h - 2 do
     setAdaptive(x, y1, cfg, cbg, alpha, true, false)
-    set(x, y1, "│")
+    set(x, y1, "│", false, true)
     setAdaptive(x + w - 1, y1, cfg, cbg, alpha, true, false)
-    set(x + w - 1, y1, "│")
+    set(x + w - 1, y1, "│", false, true)
   end
 
   -- Reset original bg / fg colors
@@ -563,7 +588,7 @@ local function drawRectangle(x, y, w, h, alpha, symbol)
       if x1 < 1 or y1 < 1 or x1 > bufferWidth then goto continue end
       if y1 > bufferHeight then break end
       
-      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, symbol))
+      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, symbol), false, true)
       ::continue::
     end
   end
@@ -597,7 +622,7 @@ local function drawText(x, y, string, alpha, blendBg)
     if x < 1 then goto continue end
     if x > bufferWidth then break end
 
-    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)))
+    set(x + dx, y, setAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1)), false, true)
     ::continue::
   end
 
@@ -628,20 +653,20 @@ local function ellipseHelper(x, y, a, b, alpha, outlineOnly, symbol)
       prevdx1, prevdy1 = dx1, dy1
 
       -- x1, y1 is in first quadrent, use symmetry
-      set(x + dx1, y + dy1, setAdaptive(x + dx1, y + dy1, cfg, cbg, alpha, true, true, symbol))
-      set(x - dx1, y + dy1, setAdaptive(x - dx1, y + dy1, cfg, cbg, alpha, true, true, symbol))
+      set(x + dx1, y + dy1, setAdaptive(x + dx1, y + dy1, cfg, cbg, alpha, true, true, symbol), false, true)
+      set(x - dx1, y + dy1, setAdaptive(x - dx1, y + dy1, cfg, cbg, alpha, true, true, symbol), false, true)
 
       -- Avoid overlap on x-sides
       if dy1 ~= 0 then
-        set(x + dx1, y - dy1, setAdaptive(x + dx1, y - dy1, cfg, cbg, alpha, true, true, symbol))
-        set(x - dx1, y - dy1, setAdaptive(x - dx1, y - dy1, cfg, cbg, alpha, true, true, symbol))
+        set(x + dx1, y - dy1, setAdaptive(x + dx1, y - dy1, cfg, cbg, alpha, true, true, symbol), false, true)
+        set(x - dx1, y - dy1, setAdaptive(x - dx1, y - dy1, cfg, cbg, alpha, true, true, symbol), false, true)
       end
       ::continue::
     end
 
     -- Fill in caps on top and bottom, since there is overlap and we subtracted thetaInc from loop
-    set(x, y + b, setAdaptive(x, y + b, cfg, cbg, alpha, true, true, symbol))
-    set(x, y - b, setAdaptive(x, y - b, cfg, cbg, alpha, true, true, symbol))
+    set(x, y + b, setAdaptive(x, y + b, cfg, cbg, alpha, true, true, symbol), false, true)
+    set(x, y - b, setAdaptive(x, y - b, cfg, cbg, alpha, true, true, symbol), false, true)
   else
     local a2, b2 = a * a, b * b -- Store the axis squared
     local computedBound
@@ -652,20 +677,20 @@ local function ellipseHelper(x, y, a, b, alpha, outlineOnly, symbol)
       if computedBound > 1 then goto continue end
 
       -- First quadrent
-      set(x + dx, y + dy, setAdaptive(x + dx, y + dy, cfg, cbg, alpha, true, true, symbol))
+      set(x + dx, y + dy, setAdaptive(x + dx, y + dy, cfg, cbg, alpha, true, true, symbol), false, true)
       -- If dx = 0 and dy = 0 then don't draw any other quadrent to avoid overlap
       if dx == 0 and dy == 0 then -- Do nothing
       -- If dx = 0 then don't draw left side of ellipse to avoid overlap
       elseif dx == 0 then
-        set(x + dx, y - dy, setAdaptive(x + dx, y - dy, cfg, cbg, alpha, true, true, symbol))
+        set(x + dx, y - dy, setAdaptive(x + dx, y - dy, cfg, cbg, alpha, true, true, symbol), false, true)
       -- If dy = 0 then don't draw bottom half to avoid overlap
       elseif dy == 0 then
-        set(x - dx, y + dy, setAdaptive(x - dx, y + dy, cfg, cbg, alpha, true, true, symbol))
+        set(x - dx, y + dy, setAdaptive(x - dx, y + dy, cfg, cbg, alpha, true, true, symbol), false, true)
       -- Draw all other quadrents
       else
-        set(x - dx, y + dy, setAdaptive(x - dx, y + dy, cfg, cbg, alpha, true, true, symbol))
-        set(x + dx, y - dy, setAdaptive(x + dx, y - dy, cfg, cbg, alpha, true, true, symbol))
-        set(x - dx, y - dy, setAdaptive(x - dx, y - dy, cfg, cbg, alpha, true, true, symbol))
+        set(x - dx, y + dy, setAdaptive(x - dx, y + dy, cfg, cbg, alpha, true, true, symbol), false, true)
+        set(x + dx, y - dy, setAdaptive(x + dx, y - dy, cfg, cbg, alpha, true, true, symbol), false, true)
+        set(x - dx, y - dy, setAdaptive(x - dx, y - dy, cfg, cbg, alpha, true, true, symbol), false, true)
       end
       ::continue::
     end end
@@ -755,7 +780,7 @@ local function subEllipseTemplate(x, y, a, b, alpha, justOutline)
 
       subChar = " "
       currentBackground = currentForeground
-      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar))
+      set(x1, y1, setAdaptive(x1, y1, cfg, cbg, alpha, true, true, subChar), false, true)
     else
       -- Side bars should have the background equal to the blended value
       -- However since braille is filled with foreground we swap bg and fg
@@ -769,7 +794,7 @@ local function subEllipseTemplate(x, y, a, b, alpha, justOutline)
       else currentForeground = currentBackground end
 
       currentBackground = getRaw(x1, y1)
-      set(x1, y1, charToDraw)
+      set(x1, y1, charToDraw, false, true)
     end
     
     currentBackground = currentBackgroundSave
@@ -860,7 +885,7 @@ local function drawLine(x1, y1, x2, y2, alpha, lineChar)
   checkArg(6, lineChar, "string", "nil")
 
   local function genericLineFunc(x, y, cfg, cbg, alpha)
-    set(x, y, setAdaptive(x, y, cfg, cbg, alpha, true, true, lineChar))
+    set(x, y, setAdaptive(x, y, cfg, cbg, alpha, true, true, lineChar), false, true)
   end
   return lineHelper(x1, y1, x2, y2, alpha, genericLineFunc, genericLineFunc, genericLineFunc, genericLineFunc)
 end
@@ -890,7 +915,7 @@ local function genericSubLineFunc(x, y, cfg, cbg, alpha, char, currentBackground
   currentForeground = color.blend(currentBackgroundSave, getRaw(x, y), alpha)
   currentBackground = getRaw(x, y)
 
-  set(x, y, char)
+  set(x, y, char, false, true)
   ::continue::
 end
 
@@ -906,7 +931,7 @@ local function subLineSlopeHelperFunc(x, y, cfg, cbg, alpha, x1, y1, gradient, c
       charToDraw = setAdaptive(x2, y2, cfg, cbg, alpha, true, true, subChar)
       currentForeground = color.blend(currentBackgroundSave, getRaw(x2, y2), alpha)
       currentBackground = getRaw(x2, y2)
-      set(x2, y2, charToDraw)
+      set(x2, y2, charToDraw, false, true)
     end
   end
 end
@@ -981,6 +1006,12 @@ local function setGPUProxy(gpu)
   GPUgetResolution, GPUsetResolution = gpu.getResolution, gpu.setResolution
   GPUgetPaletteColor = gpu.getPaletteColor
   GPUsetPaletteColor = gpu.setPaletteColor
+
+  -- Override GPU API
+  gpu.set, gpu.copy, gpu.fill = set, copy, fill
+  gpu.setBackground, gpu.setForeground = setBackground, setForeground
+  gpu.getBackground, gpu.getForeground = getBackground, getForeground
+  gpu.setResolution, gpu.getResolution = setResolution, getResolution
 
   -- Prefill buffer
   flush()

@@ -1597,8 +1597,6 @@ local function drawChart(chart)
 
 
     end
-
-    component.ocemu.log(currentI, cell1Max, cell2Max)
   end
 end
 
