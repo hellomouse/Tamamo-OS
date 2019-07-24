@@ -1,14 +1,5 @@
 lib/core/boot.lua - boot sequence
 
-https://raw.githubusercontent.com/Shuudoushi/SecureOS/release/installer.lua
-
-cd src
-lua boot.lua /path/to/my/emulated/machine_a
-
-https://ocdoc.cil.li/api:computer
-
-https://oc.cil.li/topic/1801-kestrelos-safe-and-powerful-windows-alike-os/?tab=comments#comment-8311 
-
 
 http://www.lua.org/pil/contents.html
 https://oc.cil.li/topic/864-chenthread-image-format-high-quality-images-on-opencomputers/
@@ -20,7 +11,7 @@ https://ocdoc.cil.li/component:gpu
 https://github.com/IgorTimofeev/MineOS/wiki/Component-API 
 https://oc.cil.li/topic/421-tar-for-opencomputers/ 
 https://ocdoc.cil.li/api:thread
-https://www.reddit.com/r/feedthebeast/comments/4535b8/draconic_evolution_reactor_for_science/ 
+
 
 Boot options 
 - Disk options 
@@ -29,17 +20,110 @@ Boot options
 - Back 
 
 
-TPM - tamamo package manager (thx asdfbot)
+Permissions like in android 
+- App would like to access OS GUI container
+- Detect gpu and shit and notify in list
+
+underline using unicode 
+check find in wrap works with unicode chars
+sys internal screen update loop
+test the moveForward and shit 
 
 
-https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
-https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
+noise api
+
+
+system drivers 
+- sort by rank, select best one
+
+
+add a ram check program to help debug
+
+
+some way to access raw GPU functions no update
+
+
+Sectionlike structure of the man program
 
 gui idea 
 - gui divs, keep elements inside from rendering out of bounds, iwht scroll 
 - div:addChild add element
-- buttons and shit 
 - tab class - handles events
+
+rewrite animation threads to use 1 thread to optimize memory?
+- calculate itming based on thread main tick iteration to get number of ticks before counting, 
+ - iterates all active animations
+
+internal clipboard
+
+
+component.ocemu.log
+
+
+
+
+option to use optimized scroll in panel and codeview
+
+
+
+gui: 
+list (tabs / vertical)
+table
+dropdown box 
+chart
+tree list
+textarea
+brailel canvas
+
+color selector 
+popup
+component selector
+file selector 
+alert()
+
+
+image lib
+- flip, rotate methods, crop
+more image formats
+
+"workspaces" that can be created to handle events
+
+GUI element - consume event and make transparent
+
+disabled elements more apparent
+
+
+validate width and shit < 0 and other checks not just checkarg
+progressbar is showval then must define textcolor
+check startCol is integer, etc...?
+
+GUI needs a lot more strict checking ^
+
+
+
+
+
+color pciker - needs some sort of z-indexing
+- instead of 240 buttons calculate from mouse click
+
+
+color picker should be seperate GUI object adedd
+
+
+
+
+
+save some colors for system 
+
+
+virtual components 
+
+system.auth() command - awaits password, no keylogging allowed!
+
+http://www.directupload.net/file/d/4567/72sfmphs_png.htm 
+https://ocdoc.cil.li/tutorial:program:install 
+
+
 
 System
 - Drivers for sound and shit, which can be interfaced instead of with direct component 
@@ -55,46 +139,110 @@ hashlib - like base64, optional
 
 install from compressed archive
 
-image lib
-- flip, rotate methods, crop
+
 
 make base64 lib optional
 
 optimize wiht https://oc.cil.li/topic/243-memory-management/
 
 
-gui
-- file browser 
-- popup
--palette selector 
-- component selector
+TODO use copy() somehow when scrolling to lessen lag
+- in both codeview and panel
+- doesn't work as it may copy stuff overlapping
+
+note that x scrollbars are smaller than y scrollbars due to 2x char height
 
 
-screen api 
-- get pixel at location
-- copy from MineOS
+https://git.daelvn.ga/filekit/ for filesystem
 
 
-semipixel ellipse, semipixel curve
-regular line
+tidy var names 
+- in functions too
 
+replace #arr + 1 with n and inc 8x faster
+
+
+
+screen: 
+
+invert colors to optimize somehow?
+
+demo program draw tamamo OS logo
+
+
+-- We can save a few hundred bytes by replacing True and False with
+-- variables that can be minified
+local trueVar, falseVar = true, false
+local checkMultiArgFunc = checkMultiArg
+
+
+
+
+
+
+codeview breaks if scroll too much see test4
+- check drawText bound check
+
+gui range slider draws first, maybe not respecting update?
 
 image masking - graphics object!
 
 
 
-screensaver: https://chrome.google.com/webstore/detail/lagom/kmklifknlepgmbbigahhphncmgkppbjb?hl=en
 
 
-scren optimize with fill and rectangle finding
-- try to fill with curernt bg color first then try others
+
+
+
+write tests!
+
+
+tamamo noble phantasm as boot
+
+出雲に神在り、是自在にして禊の証、神宝宇迦之鏡也――『 水天日光天照八野鎮石すいてんにっこうあまてらす やのしずいし……なんちゃって
+
+
+optimizations that don't work 
 - vertical drawing
+- rectangle finding 
+- seralizing coordinates into strings
+- try to fill with curernt bg color first then try others
+- try to fill with current fg
+- not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
+
+
+
+
+gpu copy code:
+  if useGpuCopy then
+    local canDirectlyCopy, canPartialCopy = trueVar, falseVar
+
+    -- We can't use gpu copy directly though if it exceeds the current bounds
+    if (drawX1 ~= 1 or drawY1 ~= 1 or drawX2 ~= bufferWidth or drawY2 ~= bufferHeight) and
+       (x + tx < drawX1 or x + tx + w - 1 < drawX1 or y + ty < drawY1 or y + ty + h - 1 < drawY1 or
+        x + tx > drawX2 or x + tx + w - 1 > drawX2 or y + ty > drawY2 or y + ty + h - 1 > drawY2) then
+      canDirectlyCopy = falseVar
+    end
+
+    if canDirectlyCopy then
+      update() -- Update current change buffer
+      GPUcopy(x, y, w, h, tx, ty)
+    else
+      -- Intersect of draw bounds and the copied rectangle
+      -- (Copied portion that can be displayed)
+      local ix1, iy1, ix2, iy2 = max(drawX1, x + tx), max(drawY1, y + ty), min(drawX2, x + w + tx), min(drawY2, y + h + ty)
+
+      if ix1 >= ix2 or iy1 >= iy2 then else -- If there is an intersection copy() it over
+        update() -- Update current change buffer
+        GPUcopy(ix1 - tx, iy1 - ty, ix2 - ix1 + 1, iy2 - iy1 + 1, tx, ty)
+        canPartialCopy = trueVar
+      end
+    end
+  end
 
 
 https://www.zerochan.net/1727073 - izuna citation
 
-https://oc.cil.li/topic/793-proximity-door-update-v13-nothing-says-style-like-an-automatic-door/
-https://oc.cil.li/topic/1470-mekanism-hud-with-openglasses/
 
 https://oc.cil.li/topic/1415-pseudo-big-font-library/
 
@@ -107,47 +255,10 @@ make boot work only if there is a gpu
 
 
 
-drawLimits 
-
-instead of sorting by color with table use fancy shit
-- save changes in the changes buffer - for first 128 indexes add to w * h for color storage
-- then switch to used indexes
-- have the things reference each other
-
-
 terminal backgrounds!
-
-
 
 
 write tests
 
 - component browser
 https://oc.cil.li/topic/835-cmb-component-methods-browser/
-
-geo-explorer program - hologram / keys to move around
-
--videos - https://git.asie.pl/asie-minecraft/Nadeshicodec
-
-audio drones
-    https://oc.cil.li/topic/1758-noteblock-studio-player-for-computronics-sound-cards/
-
-music http://packages.noahtg.com/pianoNotesArray.php
-
-
-https://github.com/OpenPrograms/Wuerfel_21-OC-Toolkit
-https://oc.cil.li/topic/116-wuerfel_21s-oc-toolkit-everything-and-more/
-https://github.com/IgorTimofeev/MineOS/blob/5b2e4b2a11bb2c1d2831e7e07c444ccf80b66b56/Applications/Settings.app/Modules/0_Screen/Main.lua
-
-
-3d print building things
-- 3D printer print
-
-draconic reactor controller 
-- https://tenyx.de/draconic_control/advanced.html#simulator
-- https://tenyx.de/draconic_control/
-- https://pastebin.com/WduATMTF (https://oc.cil.li/topic/1310-draconic-reactor-emulator/)
-
-instruction program - write instructions
-
-IC2 reactor controller

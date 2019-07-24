@@ -2,19 +2,19 @@ local image = require("image")
 local screen = require("screen")
 local i = image.loadHDG("test.hdg")
 
+screen.clear()
 local x = os.clock()
-local count = 1
 
+i:draw()
 
-for j = 1, count do
-    -- screen.fill(1, 1, screen.getWidth(), screen.getHeight(), " ")
-    i:draw()
-end
+--require("component").ocemu.log(string.format("Elapsed time: %.2f", (os.clock() - x) ))
 
 screen.setForeground(0)
 screen.setBackground(0xFFFFFF)
-screen.set(40, 40, string.format("Elapsed time: %.2f", (os.clock() - x) / count ))
-screen.set(40, 41, "Hello")
+screen.drawText(80, 40, string.format("Elapsed time: %.2f", (os.clock() - x) ))
+screen.update(true) -- TODO rewrite system
 
 --error()
+
 require("io").read()
+i:unload()

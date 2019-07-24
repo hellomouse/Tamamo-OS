@@ -1,0 +1,113 @@
+
+https://oc.cil.li/uploads/monthly_2018_03/screen.jpg.f62d7f0f28ea4d9735f4dfb09d478d30.jpg 
+https://oc.cil.li/topic/1495-shedit-editlua-but-with-syntax-highlighting/
+
+https://oc.cil.li/topic/1851-oetf-16-open-extensible-firmware-interface/
+https://github.com/Adorable-Catgirl/Zorya-BIOS
+
+https://www.reddit.com/r/loadingicon/comments/bwdx14/oc_a_roll_of_the_metaphysical_dice/
+
+https://github.com/dunstad/roboserver
+https://oc.cil.li/topic/1672-fishing-program/#comment-7668
+
+drone player transport
+
+crypto
+https://lhartikk.github.io/jekyll/update/2017/07/09/chapter6.html
+
+autocraft computer parts 
+
+https://oc.cil.li/topic/683-3d-printing-with-schematics/
+https://oc.cil.li/topic/560-i-printed-a-house/
+https://oc.cil.li/topic/1781-oetf-14-ohml/
+
+https://github.com/roshancode/Audio-react
+
+http://www.computercraft.info/forums2/index.php?/topic/29809-workspace-desktop-grid-multitasking-in-computercraft/
+http://www.computercraft.info/forums2/index.php?/forum/33-pocket-programs/
+http://www.computercraft.info/forums2/index.php?/forum/21-turtle-programs/
+
+http://www.computercraft.info/forums2/index.php?/topic/26848-3d-rendering-api-v051-updated-way-better-erformance-new-functionalities/
+
+
+game of life
+
+https://oc.cil.li/topic/987-i-got-so-bored-i-made-an-ime-with-a-very-basic-text-editor-that-doesnt-even-save-and-load/
+kanji input / chinese
+
+tape looper 
+https://oc.cil.li/topic/784-computronics-tape-drive-looper/
+
+https://github.com/TetraSource/OC-programs/wiki/Bundle
+http://www.computercraft.info/forums2/index.php?/topic/29701-ascii-a-ascii-visualizer/ 
+
+TPM - tamamo package manager (thx asdfbot)
+
+https://github.com/cyb0124/OCRemote 
+https://github.com/giann/croissant
+clone hard drive
+
+https://oc.cil.li/topic/443-comprehensive-unicode-reference-images/
+https://imgur.com/gallery/Vcx4Wrq 
+
+tablet as build wand 
+
+https://www.reddit.com/r/feedthebeast/comments/4535b8/draconic_evolution_reactor_for_science/ 
+https://oc.cil.li/topic/1010-how-to-craft-items-in-ae2-network/
+
+
+https://raw.githubusercontent.com/Shuudoushi/SecureOS/release/installer.lua
+
+
+https://ocdoc.cil.li/api:computer
+
+https://oc.cil.li/topic/1801-kestrelos-safe-and-powerful-windows-alike-os/?tab=comments#comment-8311 
+
+loading simulator: https://pastebin.com/YbRrTDsy
+terria clone  http://www.computercraft.info/forums2/index.php?/topic/28885-terraricca-a-terraria-clone-in-cc/
+doom 
+
+AR Dodge ball
+
+
+banner editor 
+
+https://github.com/IgorTimofeev/AdvancedLua/blob/master/README.md
+https://youtu.be/dmlt1883ypE?t=16
+
+
+ssh and ftp
+https://gitlab.com/polyzium/ngsh
+
+screensaver: https://chrome.google.com/webstore/detail/lagom/kmklifknlepgmbbigahhphncmgkppbjb?hl=en
+
+https://oc.cil.li/topic/793-proximity-door-update-v13-nothing-says-style-like-an-automatic-door/
+https://oc.cil.li/topic/1470-mekanism-hud-with-openglasses/
+
+
+geo-explorer program - hologram / keys to move around
+
+-videos - https://git.asie.pl/asie-minecraft/Nadeshicodec
+
+audio drones
+    https://oc.cil.li/topic/1758-noteblock-studio-player-for-computronics-sound-cards/
+
+music http://packages.noahtg.com/pianoNotesArray.php
+
+
+https://github.com/OpenPrograms/Wuerfel_21-OC-Toolkit
+https://oc.cil.li/topic/116-wuerfel_21s-oc-toolkit-everything-and-more/
+https://github.com/IgorTimofeev/MineOS/blob/5b2e4b2a11bb2c1d2831e7e07c444ccf80b66b56/Applications/Settings.app/Modules/0_Screen/Main.lua
+
+
+3d print building things
+- 3D printer print
+
+draconic reactor controller 
+- https://tenyx.de/draconic_control/advanced.html#simulator
+- https://tenyx.de/draconic_control/
+- https://pastebin.com/WduATMTF (https://oc.cil.li/topic/1310-draconic-reactor-emulator/)
+
+instruction program - write instructions
+
+IC2 reactor controller
