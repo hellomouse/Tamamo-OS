@@ -522,7 +522,7 @@ local function drawTextBox(textbox)
 
   -- Textbox text should wrap around
   for i = 1, #textbox.lines do
-    drawText(textbox.x, textbox.y + i - 1, textbox.lines[i], 1, true)
+    drawText(textbox.x, textbox.y + i - 1, textbox.lines[i])
   end
 end
 
@@ -587,7 +587,7 @@ local function drawLabel(label)
   else y = label.y end -- Top
 
   screen.setForeground(label.color)
-  drawText(x, y, label.text, 1, true)
+  drawText(x, y, label.text)
 end
 
 function GUI.createLabel(x, y, text, textColor, width, height, align)
@@ -651,13 +651,13 @@ end
 -- Switch drawing function --
 local function drawSwitch(switch)
   screen.setBackground(switch.inactiveColor)
-  drawText(switch.x, switch.y, "     ")
+  screen.set(switch.x, switch.y, "     ")
 
   screen.setBackground(switch.activeColor)
-  drawText(switch.x, switch.y, rep(" ", switch.animationdx))
+  screen.set(switch.x, switch.y, rep(" ", switch.animationdx))
 
   screen.setBackground(switch.cursorColor)
-  drawText(switch.x + switch.animationdx, switch.y, "  ")
+  screen.set(switch.x + switch.animationdx, switch.y, "  ")
 end
 
 -- Event handler for switch, deals only with touch events for now --
@@ -713,7 +713,7 @@ local function drawCheckbox(checkbox)
   if checkbox.toggled then screen.setBackground(checkbox.activeColor)
   else screen.setBackground(checkbox.inactiveColor) end
 
-  drawText(checkbox.x, checkbox.y, "  ")
+  screen.set(checkbox.x, checkbox.y, "  ")
   screen.setForeground(checkbox.textColor)
   drawText(checkbox.x + 3, checkbox.y, checkbox.label, 1, true)
 end
@@ -808,11 +808,11 @@ local function drawButton(button)
 
   -- Framed buttons do not get the solid fill
   if button.framed then
-    screen.drawRectangleOutline(button.x, button.y, button.width, button.height, button.bgAlpha)
-    drawText(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text, 1, true)
+    screen.drawThinRectangleOutline(button.x, button.y, button.width, button.height, button.bgAlpha)
+    drawText(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text)
   else  
     screen.drawRectangle(button.x, button.y, button.width, button.height, button.bgAlpha)
-    drawText(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text)
+    screen.set(button.x + button.width / 2 - len(button.text) / 2, button.y + button.height / 2, button.text)
   end
 end
 
@@ -897,26 +897,26 @@ local function drawSlider(slider)
 
   if slider.showMinMax or slider.showMinMax == nil then
     screen.setForeground(slider.textColor)
-    drawText(slider.x, slider.y, slider.minStr, 1, true)
-    drawText(slider.x + slider.width - len(slider.maxStr), slider.y, slider.maxStr, 1, true)
+    drawText(slider.x, slider.y, slider.minStr)
+    drawText(slider.x + slider.width - len(slider.maxStr), slider.y, slider.maxStr)
   end
 
   -- Render the slider colored bar --
   screen.setForeground(slider.baseColor)
-  drawText(slider.x + slider.sliderOffset, slider.y, rep("━", slider.sliderWidth), 1, true)
+  drawText(slider.x + slider.sliderOffset, slider.y, rep("━", slider.sliderWidth))
 
   local percentageIn = (slider.value - slider.min) / (slider.max - slider.min)
   if percentageIn == 1 then percentageIn = 0.999 end -- We aren't allowed actually to take up full width due to rendering bug
 
   screen.setForeground(slider.sliderColor)
-  drawText(slider.x + slider.sliderOffset, slider.y, rep("━", ceil(slider.sliderWidth * percentageIn)), 1, true)
+  drawText(slider.x + slider.sliderOffset, slider.y, rep("━", ceil(slider.sliderWidth * percentageIn)))
   screen.setForeground(slider.knobColor)
-  drawText(slider.x + slider.sliderOffset + floor(slider.sliderWidth * percentageIn), slider.y, "━", 1, true)
+  drawText(slider.x + slider.sliderOffset + floor(slider.sliderWidth * percentageIn), slider.y, "━")
 
   if slider.showVal then
     local textToDraw = (slider.prefix or "") .. slider.value.. (slider.suffix or "")
     screen.setForeground(slider.textColor)
-    drawText(slider.x + slider.width / 2 - len(textToDraw) / 2, slider.y + 1, textToDraw, 1, true)
+    drawText(slider.x + slider.width / 2 - len(textToDraw) / 2, slider.y + 1, textToDraw)
   end
 end
 
@@ -1159,12 +1159,12 @@ local function drawInput(input)
   -- No input value, check if a placeholder is defined --
   if input.placeholder ~= nil and input.placeholderTextColor ~= nil and not input.focused and len(textToRender) == 0 then 
     screen.setForeground(input.placeholderTextColor)
-    drawText(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
+    screen.set(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
   else
     -- Placeholder always drawn if keep placeholder is true 
     if input.keepPlaceholder then
       local temp = screen.setForeground(input.placeholderTextColor)
-      drawText(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
+      screen.set(input.x + input.pad / 2, input.y + input.height / 2, input.placeholder)
       screen.setForeground(temp)
     end
 
@@ -1185,19 +1185,19 @@ local function drawInput(input)
       end
     end
 
-    drawText(input.x + input.pad / 2, input.y + input.height / 2, textToRender)
+    screen.set(input.x + input.pad / 2, input.y + input.height / 2, textToRender)
 
     -- Render the cursor
     if input.focused then
       screen.setForeground(GUI.CURSOR_BLINK)
-      drawText(input.x  + input.pad / 2 + input.cursor - input.scroll - 1, input.y + input.height / 2,
+      screen.set(input.x  + input.pad / 2 + input.cursor - input.scroll - 1, input.y + input.height / 2,
         GUI.CURSOR_CHAR)
     end
   end
 
   -- Debug text
   if input.debug then
-    drawText(input.x + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2, input.y + input.height - 1, 
+    screen.set(input.x + GUI.INPUT_LEFT_RIGHT_TOTAL_PAD / 2, input.y + input.height - 1, 
       "C" .. input.cursor .. " S" .. input.scroll .. " LEN" .. len(input.value))
   end
 end
@@ -1268,14 +1268,14 @@ end
 local function drawProgressIndicator(indicator)
   if not indicator.active then screen.setForeground(indicator.bgColor)
   else screen.setForeground(indicator.activeColor2) end
-  drawText(indicator.x, indicator.y, rep("▂", indicator.width), 1, true)
+  drawText(indicator.x, indicator.y, rep("▂", indicator.width))
   screen.setForeground(indicator.activeColor1)
 
   if indicator.cycle < indicator.width / 2 then -- No cycling back to beginning
-    drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", floor(indicator.width / 2)), 1, true)
+    drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", floor(indicator.width / 2)))
   else
-    drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", indicator.width - indicator.cycle), 1, true)
-    drawText(indicator.x, indicator.y, rep("▂", floor(indicator.width / 2) - indicator.width + indicator.cycle), 1, true)
+    drawText(indicator.x + indicator.cycle, indicator.y, rep("▂", indicator.width - indicator.cycle))
+    drawText(indicator.x, indicator.y, rep("▂", floor(indicator.width / 2) - indicator.width + indicator.cycle))
   end
 end
 
@@ -1313,10 +1313,10 @@ end
 ------------------------------------------------
 local function drawProgressBar(progressbar)
   screen.setForeground(progressbar.color)
-  drawText(progressbar.x, progressbar.y, rep("▔", progressbar.width), 1, true)
+  drawText(progressbar.x, progressbar.y, rep("▔", progressbar.width))
 
   screen.setForeground(progressbar.activeColor)
-  drawText(progressbar.x, progressbar.y, rep("▔", ceil(progressbar.width * progressbar.value)), 1, true)
+  drawText(progressbar.x, progressbar.y, rep("▔", ceil(progressbar.width * progressbar.value)))
 
   if progressbar.showValue then
     local textToRender = progressbar.prefix 
@@ -1324,7 +1324,7 @@ local function drawProgressBar(progressbar)
       .. progressbar.suffix
 
     screen.setForeground(progressbar.textColor)
-    drawText(progressbar.x + progressbar.width / 2 - len(textToRender) / 2, progressbar.y + 1, textToRender, 1, true)
+    drawText(progressbar.x + progressbar.width / 2 - len(textToRender) / 2, progressbar.y + 1, textToRender)
   end
 end
 
@@ -1369,15 +1369,15 @@ local function drawScrollBar(scrollbar)
     for i = 1, scrollbar.height do
       if i > scrollRatioLow and i < scrollRatioHigh then screen.setForeground(scrollbar.fgColor)
       else screen.setForeground(scrollbar.bgColor) end
-      drawText(scrollbar.x, scrollbar.y + i - 1, "┃", 1, true)
+      drawText(scrollbar.x, scrollbar.y + i - 1, "┃")
     end
   else
     screen.setForeground(scrollbar.bgColor)
-    drawText(scrollbar.x, scrollbar.y, rep("━", scrollbar.width), 1, true)
+    drawText(scrollbar.x, scrollbar.y, rep("━", scrollbar.width))
 
     screen.setForeground(scrollbar.fgColor)
     drawText(scrollbar.x + floor(scrollRatioLow), scrollbar.y, 
-      rep("━", cursorSize), 1, true)
+      rep("━", cursorSize), 1)
   end
 end
 
@@ -1511,10 +1511,10 @@ local function drawChart(chart)
   -- Render axis (axii?)
   screen.setForeground(chart.axisColor)
   for y = chart.y, chart.y + chart.height - 3 do
-    drawText(xOffset + chart.x - 1, y, "┨", 1, true)
+    drawText(xOffset + chart.x - 1, y, "┨")
   end
-  drawText(chart.x + xOffset, chart.y + chart.height - 2, rep("┯━", (chart.width - xOffset) / 2), 1, true)
-  drawText(chart.x + xOffset - 1, chart.y + chart.height - 2, "┗", 1, true)
+  drawText(chart.x + xOffset, chart.y + chart.height - 2, rep("┯━", (chart.width - xOffset) / 2))
+  drawText(chart.x + xOffset - 1, chart.y + chart.height - 2, "┗")
 
   -- Render axis labels
   local xIncPixel = floor(chart.xSpacing * (chart.width - 2 - xOffset))
@@ -1528,10 +1528,10 @@ local function drawChart(chart)
     yCount = yCount + chart.ySpacing
 
     screen.setForeground(chart.labelColor)
-    drawText(chart.x, y, yLabel, 1, true)
+    drawText(chart.x, y, yLabel)
 
     screen.setForeground(chart.labelSuffixColor)
-    drawText(chart.x + #yLabel, y, chart.ySuffix, 1, true)
+    drawText(chart.x + #yLabel, y, chart.ySuffix)
   end
   for x = chart.x + xOffset, chart.x + chart.width, xIncPixel do
     xLabel = formatChartValue(chart.minX + xCount * (chart.maxX - chart.minX), chart.round)
@@ -1539,10 +1539,10 @@ local function drawChart(chart)
     x = x - #xLabel * 0.7 -- 0.7 is arbritrary offset to make sure labels don't go offscreen
 
     screen.setForeground(chart.labelColor)
-    drawText(x, chart.y + chart.height - 1, xLabel, 1, true)
+    drawText(x, chart.y + chart.height - 1, xLabel)
 
     screen.setForeground(chart.labelSuffixColor)
-    drawText(x + #xLabel, chart.y + chart.height - 1, chart.xSuffix, 1, true)
+    drawText(x + #xLabel, chart.y + chart.height - 1, chart.xSuffix)
   end
 
   -- Draw the actual chart itself
@@ -1703,7 +1703,7 @@ end
 ------------------------------------------------
 local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme, indentSize)
   -- Base text (assumed you set base color already)
-  drawText(x, y, line, 1, true)
+  drawText(x, y, line)
 
   -- Indent line
   local indentIndex = 1
@@ -1711,7 +1711,7 @@ local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme, inde
 
   screen.setForeground(colorScheme.indentation)
   while sub(line, indentIndex, indentIndex + indentSize - 1) == repStr do
-    drawText(x + indentIndex - 1, y, "│")
+    screen.set(x + indentIndex - 1, y, "│")
     indentIndex = indentIndex + indentSize
   end
 
@@ -1726,7 +1726,7 @@ local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme, inde
     screen.setForeground(colorScheme[group] or 1)
 
     while index1 ~= nil do
-      drawText(x + index1 - 1 + syntaxPatterns[i + 2], y, 
+      screen.set(x + index1 - 1 + syntaxPatterns[i + 2], y, 
         sub(line, index1 + syntaxPatterns[i + 2], index2 - syntaxPatterns[i + 3]))
       index1, index2 = find(line, pattern, index1 + 1)
     end
@@ -1768,14 +1768,14 @@ local function drawCodeView(codeview)
         codeview.y + line - dy,
         codeview.syntaxPatterns, codeview.colorScheme, codeview.indentSize)
     else
-      drawText(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy, codeview.lines[line])
+      screen.set(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy, codeview.lines[line])
     end
 
     -- Highlight the current text
     if codeview.highlights and codeview.highlights[line] then
       selectSize = codeview.width - lineNumberBarWidth
       screen.setBackground(codeview.highlights[line])
-      drawText(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
+      screen.set(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
       screen.setBackground(codeview.colorScheme.codeBackground)
     end
       
@@ -1791,24 +1791,24 @@ local function drawCodeView(codeview)
 
       -- Same line selection
       if selection[1] == selection[3] then
-        drawText(codeview.x + selection[2] - dx + lineNumberBarWidth, 
+        screen.set(codeview.x + selection[2] - dx + lineNumberBarWidth, 
           codeview.y + selection[1] - dy, rep(" ", selection[4] - selection[2] + 1))
       -- Different line selection
       else
         -- Draw first selection rectangle
-        drawText(codeview.x + selection[2] - dx + lineNumberBarWidth,
+        screen.set(codeview.x + selection[2] - dx + lineNumberBarWidth,
           codeview.y + selection[1] - dy, rep(" ", codeview.width))
 
         -- Middle slection rectangle
         if selection[3] > selection[1] + 1 then
           for line = selection[1] + 1, selection[3] - 1 do
-            drawText(codeview.x + lineNumberBarWidth - dx + 1,
+            screen.set(codeview.x + lineNumberBarWidth - dx + 1,
               codeview.y + line - dy, rep(" ", codeview.width))
           end
         end
 
         -- Last selection rectangle
-        drawText(codeview.x + 1 - dx + lineNumberBarWidth,
+        screen.set(codeview.x + 1 - dx + lineNumberBarWidth,
           codeview.y + selection[3] - dy, rep(" ", selection[4] - dx))
       end
     end
@@ -1846,7 +1846,7 @@ local function drawCodeView(codeview)
     if numberToDraw > #codeview.lines - 2 then break end
 
     numberToDraw = numberToDraw  .. ""
-    drawText(codeview.x + lineNumberBarWidth - 1 - #numberToDraw, codeview.y + n - 1, numberToDraw)
+    screen.set(codeview.x + lineNumberBarWidth - 1 - #numberToDraw, codeview.y + n - 1, numberToDraw)
   end
 end
 
