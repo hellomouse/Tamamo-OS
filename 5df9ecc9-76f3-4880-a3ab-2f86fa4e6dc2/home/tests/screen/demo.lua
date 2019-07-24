@@ -4,30 +4,25 @@ local screen = require("screen")
 -- Fill background with black
 screen.clear()
 
--- Draw a row of rectangles with random colors
-for i = 1, 10 do
-  screen.setBackground(math.random(0x0, 0xFFFFFF))
-  screen.drawRectangle(i * 10, 15, 6, 3)
+-- Draw rectangle grid with random colors
+for y = 1, 3 do
+  for x = 1, 5 do
+    screen.setBackground(math.random(0x0, 0xFFFFFF))
+    screen.drawRectangle(x * 7, y * 4, 6, 3)
+  end
 end
 
--- Draw braille ellipse centered on screen
-local w, h = screen.getResolution()
-
--- screen.setBackground(0xFFDD00)
--- screen.drawBrailleEllipseOutline(w / 2, h / 2, w / 4, w / 8)
-
--- testing
-local floor = math.floor 
-
-for r = 1, 50, 5 do
-  screen.setBackground(floor(r / 50 * 0xFFFFFF))
-  screen.drawBrailleEllipseOutline(floor(w / 2), floor(h / 2), r, r / 2)
-end
-
--- Draw a white line from bottom left corner to top right
+-- Draw a white braille ellipse outline
 screen.setBackground(0xFFFFFF)
-screen.setForeground(0x0)
-screen.drawBrailleLine(1, h, w, 1)
+screen.drawBrailleEllipseOutline(24, 9.5, 10, 5)
+
+-- Draw a yellow line
+screen.setBackground(0xFFFF00)
+screen.drawBrailleLine(7, 15, 41, 4)
+
+-- Draw some white text
+screen.setForeground(0xFFFFFF)
+screen.drawText(18, 16, "Hello World!")
 
 -- Draw changed pixels on screen
 screen.update(true)
