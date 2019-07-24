@@ -62,9 +62,6 @@ component.ocemu.log
 
 
 
-copy dont directly update option?
-
-
 option to use optimized scroll in panel and codeview
 
 
@@ -103,7 +100,6 @@ check startCol is integer, etc...?
 GUI needs a lot more strict checking ^
 
 
-test os.sleep repeating in update()
 
 
 
@@ -160,29 +156,40 @@ note that x scrollbars are smaller than y scrollbars due to 2x char height
 https://git.daelvn.ga/filekit/ for filesystem
 
 
-
-drawline respect semipixel coordinates
-same for other thin methods
-
 tidy var names 
 - in functions too
 
+replace #arr + 1 with n and inc 8x faster
 
-check consistentcy of bg / fg colors
-- alternateively have color as an argument
+
+
+screen: 
+
+invert colors to optimize somehow?
+
+demo program draw tamamo OS logo
+
+
+-- We can save a few hundred bytes by replacing True and False with
+-- variables that can be minified
+local trueVar, falseVar = true, false
+local checkMultiArgFunc = checkMultiArg
+
+
+
+
+
 
 codeview breaks if scroll too much see test4
-
-
-
-semipixel rect
-- also regular rect outline and rename current to semipixel rect outline and fix this in GUI
+- check drawText bound check
 
 gui range slider draws first, maybe not respecting update?
 
 image masking - graphics object!
 
-check drawline x end value is consistent
+
+
+
 
 
 
@@ -204,8 +211,34 @@ optimizations that don't work
 - not setBackground or setForeground if currentBg / fg is the same, increases number of checks needed not likely to change
 
 
-draw triangle
 
+
+gpu copy code:
+  if useGpuCopy then
+    local canDirectlyCopy, canPartialCopy = trueVar, falseVar
+
+    -- We can't use gpu copy directly though if it exceeds the current bounds
+    if (drawX1 ~= 1 or drawY1 ~= 1 or drawX2 ~= bufferWidth or drawY2 ~= bufferHeight) and
+       (x + tx < drawX1 or x + tx + w - 1 < drawX1 or y + ty < drawY1 or y + ty + h - 1 < drawY1 or
+        x + tx > drawX2 or x + tx + w - 1 > drawX2 or y + ty > drawY2 or y + ty + h - 1 > drawY2) then
+      canDirectlyCopy = falseVar
+    end
+
+    if canDirectlyCopy then
+      update() -- Update current change buffer
+      GPUcopy(x, y, w, h, tx, ty)
+    else
+      -- Intersect of draw bounds and the copied rectangle
+      -- (Copied portion that can be displayed)
+      local ix1, iy1, ix2, iy2 = max(drawX1, x + tx), max(drawY1, y + ty), min(drawX2, x + w + tx), min(drawY2, y + h + ty)
+
+      if ix1 >= ix2 or iy1 >= iy2 then else -- If there is an intersection copy() it over
+        update() -- Update current change buffer
+        GPUcopy(ix1 - tx, iy1 - ty, ix2 - ix1 + 1, iy2 - iy1 + 1, tx, ty)
+        canPartialCopy = trueVar
+      end
+    end
+  end
 
 
 https://www.zerochan.net/1727073 - izuna citation

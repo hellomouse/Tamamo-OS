@@ -2,6 +2,7 @@ local image = require("image")
 local screen = require("screen")
 local i = image.loadHDG("test.hdg")
 
+screen.clear()
 local x = os.clock()
 
 i:draw()
@@ -10,7 +11,7 @@ i:draw()
 
 screen.setForeground(0)
 screen.setBackground(0xFFFFFF)
-screen.set(40, 40, string.format("Elapsed time: %.2f", (os.clock() - x) ))
+screen.drawText(80, 40, string.format("Elapsed time: %.2f", (os.clock() - x) ))
 screen.update(true) -- TODO rewrite system
 
 --error()
