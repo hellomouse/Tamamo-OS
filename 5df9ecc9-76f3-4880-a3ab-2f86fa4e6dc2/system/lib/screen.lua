@@ -41,7 +41,7 @@ local fillIfAreaIsGreaterThan = 40
 
 -- Convert x y coords to a buffer index
 local function getIndex(x, y)
-	return bufferWidth * (y - 1) + x
+  return bufferWidth * (y - 1) + x
 end
 
 -- Convert index to x y coords
@@ -321,7 +321,7 @@ local function set(x, y, string, vertical)
 end
 
 -- Copy a region by a displacement tx and ty
-local function copy(x, y, w, h, tx, ty, useGpuCopy)
+local function copy(x, y, w, h, tx, ty)
   checkMultiArg("number", x, y, w, h, tx, ty)
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x > bufferWidth or y > bufferHeight or w < 1 or h < 1 or
