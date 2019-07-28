@@ -70,7 +70,6 @@ gui:
 list (tabs / vertical)
 table
 dropdown box 
-chart
 tree list
 textarea
 brailel canvas
@@ -91,6 +90,7 @@ more image formats
 GUI element - consume event and make transparent
 
 disabled elements more apparent
+
 
 
 validate width and shit < 0 and other checks not just checkarg
@@ -162,12 +162,11 @@ tidy var names
 replace #arr + 1 with n and inc 8x faster
 
 
-
-screen: 
-
 invert colors to optimize somehow?
 
-demo program draw tamamo OS logo
+
+
+
 
 
 -- We can save a few hundred bytes by replacing True and False with
@@ -178,10 +177,6 @@ local checkMultiArgFunc = checkMultiArg
 
 
 
-
-
-codeview breaks if scroll too much see test4
-- check drawText bound check
 
 gui range slider draws first, maybe not respecting update?
 

@@ -100,7 +100,7 @@ local function flush(w, h)
 end
 
 -- Set a specific character (internal method) --
-local function setChar(x, y, fgColor, bgColor, symbol)
+local function rawSet(x, y, fgColor, bgColor, symbol)
   if x < drawX1 or x > drawX2 or y < drawY1 or y > drawY2 then return false end
 
   -- Don't check arg types in this function as this function is used A LOT
@@ -113,7 +113,7 @@ local function setChar(x, y, fgColor, bgColor, symbol)
 
   -- Update draw bounds if needed
   updateBoundX1, updateBoundX2 = min(x, updateBoundX1), max(x, updateBoundX2)
-  updateBoundY1, updateBoundY2 = min(x, updateBoundY1), max(x, updateBoundY2)
+  updateBoundY1, updateBoundY2 = min(y, updateBoundY1), max(y, updateBoundY2)
   changeBackgrounds[i], changeForegrounds[i], changeSymbols[i] = bgColor, fgColor, symbol
 end
 
@@ -259,7 +259,7 @@ local function getDrawingBound()
 end
 
 -- Raw get for buffer values
-local function getRaw(x, y)
+local function rawGet(x, y)
   local index = getIndex(x, y)
   if changeBackgrounds[index] ~= nil and changeBackgrounds[index] ~= -17 and changeForegrounds[index] ~= -17 then
     return normalizeColor(changeBackgrounds[index]), normalizeColor(changeForegrounds[index]), changeSymbols[index]
@@ -312,9 +312,9 @@ local function set(x, y, string, vertical)
 
   for delta = 0, len(string) - 1 do
     if vertical then
-      setChar(x, y + delta, currentForeground, currentBackground, sub(string, delta + 1, delta + 1))
+      rawSet(x, y + delta, currentForeground, currentBackground, sub(string, delta + 1, delta + 1))
     else
-      setChar(x + delta, y, currentForeground, currentBackground, sub(string, delta + 1, delta + 1))
+      rawSet(x + delta, y, currentForeground, currentBackground, sub(string, delta + 1, delta + 1))
     end
   end
   return true
@@ -325,7 +325,7 @@ local function copy(x, y, w, h, tx, ty)
   checkMultiArg("number", x, y, w, h, tx, ty)
   x, y, w, h = floor(x), floor(y), floor(w), floor(h)
   if x > bufferWidth or y > bufferHeight or w < 1 or h < 1 or
-    x + tx > bufferWidth or y + ty > bufferHeight then return false end
+     x + tx > bufferWidth or y + ty > bufferHeight then return false end
 
   -- If ty > 0 then scan bottom up, else top down
   -- If tx > 0 then scan right-left, else left-right
@@ -338,11 +338,17 @@ local function copy(x, y, w, h, tx, ty)
 
   for x = x1, x2, incX do
     for y = y1, y2, incY do
-      background, foreground, symbol = getRaw(x, y)
-      setChar(x + tx, y + ty, foreground, background, symbol)
+      if x < 1 or y < 1 or x > bufferWidth or y > bufferWidth or
+         x + tx > bufferWidth or y + ty > bufferHeight or x + tx < 1 or y + ty < 1 then goto continue end
+
+      background, foreground, symbol = rawGet(x, y)
+      rawSet(x + tx, y + ty, foreground, background, symbol)
+      ::continue::
     end
   end
 
+  -- Set update bound to entire screen, easier than doing min/max checking
+  updateBoundX1, updateBoundX2, updateBoundY1, updateBoundY2 = 1, bufferWidth, 1, bufferHeight
   return true
 end
 
@@ -401,7 +407,7 @@ local function setAdaptive(x, y, cfg, cbg, alpha, blendBg, blendBgalpha, symbol)
     return symbol
   end
 
-  local bg, fg, sym = getRaw(x, y)
+  local bg, fg, sym = rawGet(x, y)
 
   if blendBg then
     if blendBgalpha then setBackground(color.blend(bg, cbg, 1 - alpha))
@@ -412,7 +418,7 @@ local function setAdaptive(x, y, cfg, cbg, alpha, blendBg, blendBgalpha, symbol)
   -- If filling with a space it's better if one fills with the background symbol
   -- instead of losing accuracy by overwriting it with a space
   ::symbolcheck::
-  if sym == nil then bg, fg, sym = getRaw(x, y) end -- Since the goto skips this line
+  if sym == nil then bg, fg, sym = rawGet(x, y) end -- Since the goto skips this line
 
   if symbol == " " then
     setForeground(color.blend(fg, cbg, 1 - alpha))
@@ -585,8 +591,8 @@ local function drawText(x, y, string, alpha, blendBg)
   checkArg(5, blendBg, "boolean")
 
   for dx = 0, len(string) - 1 do
-    if x < 1 then goto continue end
-    if x > bufferWidth then break end
+    if x + dx < 1 then goto continue end
+    if x + dx > bufferWidth then break end
 
     setSetAdaptive(x + dx, y, cfg, cbg, alpha, blendBg, false, sub(string, dx + 1, dx + 1))
     ::continue::
@@ -751,10 +757,10 @@ local function subEllipseTemplate(x, y, a, b, alpha, justOutline)
 
       -- Just outline ellipse stuff needs proper color blending
       if justOutline then
-        currentForeground = color.blend(currentBackgroundSave, getRaw(x1, y1), alpha)
+        currentForeground = color.blend(currentBackgroundSave, rawGet(x1, y1), alpha)
       else currentForeground = currentBackground end
 
-      currentBackground = getRaw(x1, y1)
+      currentBackground = rawGet(x1, y1)
       set(x1, y1, charToDraw)
     end
     
@@ -870,8 +876,8 @@ end
 -- Performance is slightly impacted but it's not noticable
 -- plus it saves a kilobyte of storage / ram to load this module
 local function genericSubLineFunc(x, y, cfg, cbg, alpha, char, currentBackgroundSave, currentForegroundSave)
-  currentForeground = color.blend(currentBackgroundSave, getRaw(x, y), alpha)
-  currentBackground = getRaw(x, y)
+  currentForeground = color.blend(currentBackgroundSave, rawGet(x, y), alpha)
+  currentBackground = rawGet(x, y)
 
   set(x, y, char)
   ::continue::
@@ -887,8 +893,8 @@ local function subLineSlopeHelperFunc(x, y, cfg, cbg, alpha, x1, y1, gradient, c
     subChar = brailleHelper(subLineHelper, x2, y2, x1, y1, gradient)
     if subChar ~= "⠀" then
       charToDraw = setAdaptive(x2, y2, cfg, cbg, alpha, true, true, subChar)
-      currentForeground = color.blend(currentBackgroundSave, getRaw(x2, y2), alpha)
-      currentBackground = getRaw(x2, y2)
+      currentForeground = color.blend(currentBackgroundSave, rawGet(x2, y2), alpha)
+      currentBackground = rawGet(x2, y2)
       set(x2, y2, charToDraw)
     end
   end
@@ -928,17 +934,6 @@ end
 
 local function getChangeBuffer()
 	return changeBackgrounds, changeForegrounds, changeSymbols
-end
-
-local function rawGet(index)
-  checkArg(1, index, "number")
-  return bufferBackground[index], bufferForeground[index], bufferSymbol[index]
-end
-
-local function rawSet(index, background, foreground, symbol)
-  checkMultiArg("number", index, background, foreground)
-  checkArg(4, symbol, "string")
-  changeBackgrounds[index], changeForegrounds[index], changeSymbols[index] = background, foreground, symbol
 end
 
 -- Clear the screen by filling with colored whitespace chars --
@@ -1001,10 +996,8 @@ return {
   bind = bind,
   flush = flush,
   clear = clear,
-  setChar = setChar,
 
   update = update,
-  getRaw = getRaw,
   getIndex = getIndex,
   getCoords = getCoords,
   getCurrentBuffer = getCurrentBuffer,

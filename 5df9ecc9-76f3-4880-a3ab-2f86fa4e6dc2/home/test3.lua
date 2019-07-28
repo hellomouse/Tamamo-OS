@@ -1,6 +1,9 @@
 local gui = require("gui")
 local event = require("event")
 local image = require("image")
+local screen = require("screen")
+screen.clear()
+screen.update()
 
 local container = gui.createContainer(1, 1, 140, 50, true, true)
 
@@ -115,8 +118,14 @@ local scrollt = gui.createPanel(90, 1, 25, 20, 0x111111, 1, 1, true, true, true,
 scrollt.addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. Ааааа, аААаа! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear!", 0xFFFFFF, 30))
 -- container:addChild(scrollt)
 
-container:addChild(gui.createChart(90, 30, 50, 15, 0xFFFFFF, 0xFF00FF, 0xFF0000, 0xFFFF00,
-    0.5, 0.5, "t", "s", true, {1,2,3, 1.1}, {4,5,6, 3}, 2))
+local datax, datay = {}, {}
+for i = 1, 500 do
+  datax[#datax + 1] = math.random()
+  datay[#datay + 1] = math.random()
+end
+
+container:addChild(gui.createChart(90, 30, 50, 15, 0xFFFFFF, 0xFF00FF, 0xFF0000, 0xFFFF00, 0, 1,
+    0.5, 0.5, "t", "s", true, datax, datay, 2)) -- {1,2,3, 1.1}, {4,5,6, 5}
 
 local hs = {}
 local selections = {

@@ -116,6 +116,7 @@ local find = string.find
 local insert = table.insert
 local remove = table.remove
 local sort = table.sort
+local unpack = unpack or table.unpack
 
 local floor = math.floor
 local ceil = math.ceil
@@ -444,10 +445,7 @@ local function panelEventHandler(panel, ...)
 end
 
 function GUI.createPanel(x, y, width, height, bgColor, bgAlpha, margin, overrideBound, scrollX, scrollY, scrollWidth, scrollHeight)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
+  checkMultiArg("number", x, y, width, height)
   checkArg(5, bgColor, "number")
 
   if bgAlpha == nil then bgAlpha = 1 end
@@ -504,8 +502,7 @@ local function drawImage(img)
 end
 
 function GUI.createImage(x, y, loadedImage)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
+  checkMultiArg("number", x, y)
 
   local img = GUIObject:create(x, y, loadedImage.width, loadedImage.height)
   img.type = "image"
@@ -527,8 +524,7 @@ local function drawTextBox(textbox)
 end
 
 function GUI.createTextBox(x, y, text, textColor, width, height)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
+  checkMultiArg("number", x, y)
   checkArg(3, text, "string")
   checkArg(4, textColor, "number")
 
@@ -591,8 +587,7 @@ local function drawLabel(label)
 end
 
 function GUI.createLabel(x, y, text, textColor, width, height, align)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
+  checkMultiArg("number", x, y)
   checkArg(3, text, "string")
   checkArg(4, textColor, "number")
 
@@ -676,11 +671,7 @@ local function switchEventHandler(switch, ...)
 end
 
 function GUI.createSwitch(x, y, inactiveColor, activeColor, cursorColor)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, inactiveColor, "number")
-  checkArg(4, activeColor, "number")
-  checkArg(5, cursorColor, "number")
+  checkMultiArg("number", x, y, inactiveColor, activeColor, cursorColor)
 
   local switch = GUIObject:create(x, y, 5, 1)
   
@@ -734,8 +725,7 @@ local function checkboxEventHandler(checkbox, ...)
 end
 
 function GUI.createCheckbox(x, y, label, inactiveColor, activeColor, textColor)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
+  checkMultiArg("number", x, y)
   checkArg(3, label, "string")
   checkArg(4, inactiveColor, "number")
   checkArg(5, activeColor, "number")
@@ -837,10 +827,7 @@ local function buttonEventHandler(button, ...)
 end
 
 local function createButton(x, y, width, height, text, buttonColor, textColor, pressedColor, textPressedColor, bgAlpha, isFrame)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
+  checkMultiArg("number", x, y, width, height)
   checkArg(5, text, "string")
   checkArg(6, buttonColor, "number")
   checkArg(7, textColor, "number")
@@ -948,17 +935,7 @@ end
 
 function GUI.createSlider(x, y, width, baseColor, sliderColor, knobColor, textColor, min, max, val, showVal, showMinMax, increment, prefix, suffix)
   -- Variable checking
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, baseColor, "number")
-  checkArg(5, sliderColor, "number")
-  checkArg(6, knobColor, "number")
-  checkArg(7, textColor, "number")
-  checkArg(8, min, "number")
-  checkArg(9, max, "number")
-  checkArg(10, val, "number")
-
+  checkMultiArg("number", x, y, width, baseColor, sliderColor, knobColor, textColor, min, max, val)
   checkArg(11, showVal, "boolean", "nil")
   checkArg(12, showMinMax, "boolean", "nil")
   checkArg(13, increment, "number", "nil")
@@ -1204,14 +1181,7 @@ end
 
 function GUI.createInput(x, y, width, height, bgColor, textColor, focusColor, 
     focusTextColor, bgAlpha, placeholderTextColor, placeholder, textMask)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
-  checkArg(5, bgColor, "number")
-  checkArg(6, textColor, "number")
-  checkArg(7, focusColor, "number")
-  checkArg(8, focusTextColor, "number")
+  checkMultiArg("number", x, y, width, height, bgColor, textColor, focusColor, focusTextColor)
 
   local input = GUIObject:create(x, y, width, height)
   if bgAlpha == nil then bgAlpha = 1 end
@@ -1286,11 +1256,7 @@ local function progressIndicatorAnimation(indicator, percentDone, animation)
 end
 
 function GUI.createProgressIndicator(x, y, bgColor, activeColor1, activeColor2)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, bgColor, "number")
-  checkArg(4, activeColor1, "number")
-  checkArg(5, activeColor2, "number")
+  checkMultiArg("number", x, y, bgColor, activeColor1, activeColor2)
 
   local indicator = GUIObject:create(x, y, GUI.PROGRESS_WIDTH, GUI.PROGRESS_HEIGHT)
 
@@ -1329,12 +1295,7 @@ local function drawProgressBar(progressbar)
 end
 
 function GUI.createProgressBar(x, y, width, color, activeColor, value, showValue, textColor, prefix, suffix)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, color, "number")
-  checkArg(5, activeColor, "number")
-  checkArg(6, value, "number")
+  checkMultiArg("number", x, y, width, color, activeColor, value)
 
   local height = 1
   if showValue then height = 2 end
@@ -1443,9 +1404,7 @@ local function scrollBarEventHandler(scrollbar, ...)
 end
 
 function GUI.createScrollBar(x, y, size, isVertical, bgColor, fgColor)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, size, "number")
+  checkMultiArg("number", x, y, size)
   checkArg(4, isVertical, "boolean")
   checkArg(5, bgColor, "number")
   checkArg(6, fgColor, "number")
@@ -1487,22 +1446,33 @@ local function formatChartValue(val, round)
   return string.format("%." .. round .. "f", val)
 end
 
+local function checkIfFillChartValue(cell, chartYValue, chart, y)
+  if chart.fillChart then
+    return (chartYValue <= cell and 1) or 0
+  end
+
+  local nextChartYValue = chart.maxY - ((y + 0.25) / (chart.height - 2)) * (chart.maxY - chart.minY)
+  if chartYValue > cell and nextChartYValue <= cell then return 1 end
+  return 0
+end
+
+local function getSubBrailleChart(y, chart, cell1Max, cell2Max)
+  local args, i = {}, 1
+  local chartYValue
+
+  for dy = 1, 4 do
+    chartYValue = chart.maxY - ((y + dy / 4) / (chart.height - 2)) * (chart.maxY - chart.minY)
+    args[i] = checkIfFillChartValue(cell1Max, chartYValue, chart, y + dy / 4)
+    args[i + 1] = checkIfFillChartValue(cell2Max, chartYValue, chart, y + dy / 4)
+    i = i + 2
+  end
+
+  return format.getBrailleChar(unpack(args))
+end
+
 local function drawChart(chart)
   -- Search for min / max value for both x and y
-  if chart.minX == nil then
-    local xVals, yVals = chart.xValues, chart.yValues
-    local minY, maxY = yVals[1], yVals[1] -- min/max y need to be searched for
-    
-    -- Min/max x are first/last since x should be sorted
-    chart.minX, chart.maxX = xVals[1], xVals[#xVals]
-
-    for i = 2, #yVals do
-      if yVals[i] < minY then minY = yVals[i]
-      elseif yVals[i] > maxY then maxY = yVals[i] end 
-    end
-
-   chart.minY, chart.maxY = minY, maxY
-  end
+  chart.minX, chart.maxX = chart.xValues[1], chart.xValues[#chart.xValues]
 
   local xOffset = max(
     #formatChartValue(chart.minY, chart.round), 
@@ -1528,10 +1498,10 @@ local function drawChart(chart)
     yCount = yCount + chart.ySpacing
 
     screen.setForeground(chart.labelColor)
-    drawText(chart.x, y, yLabel)
+    drawText(chart.x + xOffset - #yLabel - 2, y, yLabel)
 
     screen.setForeground(chart.labelSuffixColor)
-    drawText(chart.x + #yLabel, y, chart.ySuffix)
+    drawText(chart.x + xOffset - 2, y, chart.ySuffix)
   end
   for x = chart.x + xOffset, chart.x + chart.width, xIncPixel do
     xLabel = formatChartValue(chart.minX + xCount * (chart.maxX - chart.minX), chart.round)
@@ -1546,8 +1516,7 @@ local function drawChart(chart)
   end
 
   -- Draw the actual chart itself
-
-  -- TODO this is all broken
+  screen.setForeground(chart.color)
 
   local cellBound, cell1Max, cell2Max
   local currentI = 1
@@ -1566,37 +1535,33 @@ local function drawChart(chart)
     -- Max in cell 1
     for i = currentI, #chart.xValues do
       currentI = i
-      if chart.xValues[i] < cellBound or chart.xValues[i] > cellBound + cellSize then
-        break 
-      end
+      if chart.xValues[i] < cellBound or chart.xValues[i] > cellBound + cellSize then break end
       if cell1Max == nil or chart.yValues[i] > cell1Max then
         cell1Max = chart.yValues[i]
+        currentI = currentI + 1
       end
     end
 
     -- Max in cell 2
     for i = currentI, #chart.xValues do
       currentI = i
-      if chart.xValues[i] < cellBound + cellSize or chart.xValues[i] > cellBound + cellSize * 2 then
-        break 
-      end
+      if chart.xValues[i] < cellBound + cellSize or chart.xValues[i] > cellBound + cellSize * 2 then break end
       if cell2Max == nil or chart.yValues[i] > cell2Max then
         cell2Max = chart.yValues[i]
+        currentI = currentI + 1
       end
     end
 
+    cell1Max, cell2Max = cell1Max or -math.huge, cell2Max or -math.huge
+
     -- Render current cell
-
-    -- TODO braille shit for y
-    if cell1Max == nil and cell2Max == nil then -- Do nothing
-    elseif cell1Max ~= nil and cell2Max == nil then -- Left braille
-
-    elseif cell1Max == nil and cell2Max ~= nil then -- Right braille
-
-    else -- Fill higher then:
-
-
+    local chartYValue
+    for y = 0, chart.height - 3 do
+      drawText(x + chart.x + xOffset, y + chart.y, getSubBrailleChart(y, chart, cell1Max, cell2Max))
     end
+
+    -- Reset cell1 and cell2
+    cell1Max, cell2Max = nil, nil
   end
 end
 
@@ -1613,19 +1578,9 @@ local sort_relative = function(ref, t, cmp)
   return r
 end
 
-function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor,
+function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, minY, maxY,
     xSpacing, ySpacing, xSuffix, ySuffix, fillChart, xValues, yValues, round)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
-  checkArg(5, axisColor, "number")
-  checkArg(6, labelColor, "number")
-  checkArg(7, labelSuffixColor, "number")
-  checkArg(8, chartColor, "number")
-  checkArg(9, xSpacing, "number")
-  checkArg(10, ySpacing, "number")
-  checkArg(11, xSuffix, "string")
+  checkMultiArg("number", x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, minY, maxY, xSpacing, ySpacing)
   checkArg(12, ySuffix, "string")
   checkArg(13, fillChart, "boolean")
   checkArg(14, xValues, "table")
@@ -1641,6 +1596,8 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
 
   chart.axisColor, chart.labelColor = axisColor, labelColor
   chart.labelSuffixColor, chart.color = labelSuffixColor, chartColor
+  chart.minY, chart.maxY = minY, maxY
+  chart.minX, chart.maxX = nil, nil
   chart.xSpacing, chart.ySpacing = xSpacing, ySpacing
   chart.xSuffix, chart.ySuffix = xSuffix, ySuffix
   chart.fillChart = fillChart
@@ -1653,21 +1610,11 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
   chart.round = floor(round)
 
   chart.update = function(xValues, yValues)
-    chart.minX = nil -- Force update all min/max
     sort_relative(xValues, yValues)
     chart.xValues, chart.yValues = xValues, yValues
     chart:draw()
   end
   chart.addPoint = function(x, y)
-    if chart.minX ~= nil then
-      if x < chart.minX then chart.minX = x end
-      if x > chart.maxX then chart.maxX = x end
-      if y < chart.minY then chart.minY = y end
-      if y > chart.maxY then chart.maxY = y end
-    else
-      chart.minX = nil -- Force update all min/max
-    end
-
     local added = false
     for i = 1, #chart.xValues do
       if x < chart.xValues[i] then
@@ -1680,20 +1627,13 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
       chart.xValues[#chart.xValues + 1] = x
       chart.yValues[#chart.yValues + 1] = y
     end
-
-    chart.xValues[#chart.xValues + 1] = x
-    chart.yValues[#chart.yValues + 1] = y
     chart:draw()
   end
   chart.removePoint = function(i)
-    chart.minX = nil -- Force update all min/max
     remove(chart.xValues, i)
     remove(chart.yValues, i)
     chart:draw()
   end
-
-  chart.minX, chart.maxX = nil, nil
-  chart.minY, chart.maxY = nil, nil
 
   return chart
 end
@@ -1726,7 +1666,7 @@ local function drawHighlightedText(line, x, y, syntaxPatterns, colorScheme, inde
     screen.setForeground(colorScheme[group] or 1)
 
     while index1 ~= nil do
-      screen.set(x + index1 - 1 + syntaxPatterns[i + 2], y, 
+      screen.drawText(x + index1 - 1 + syntaxPatterns[i + 2], y, 
         sub(line, index1 + syntaxPatterns[i + 2], index2 - syntaxPatterns[i + 3]))
       index1, index2 = find(line, pattern, index1 + 1)
     end
@@ -1752,36 +1692,6 @@ local function drawCodeView(codeview)
   screen.setBackground(codeview.colorScheme.codeBackground)
   screen.drawRectangle(codeview.x + lineNumberBarWidth, codeview.y, codeview.width - lineNumberBarWidth, codeview.height)
 
-  -- Render code
-  for line = max(1, dy), max(1, dy) + codeview.height - 1 do
-    if codeview.lines[line] == nil then goto continue end
-
-    currentLineLength = len(codeview.lines[line])
-    if currentLineLength > maxLineLength then
-      maxLineLength = currentLineLength
-    end
-
-    screen.setForeground(codeview.colorScheme.text)
-
-    if codeview.syntaxHighlighting then
-      drawHighlightedText(codeview.lines[line], codeview.x + lineNumberBarWidth + 1 - dx, 
-        codeview.y + line - dy,
-        codeview.syntaxPatterns, codeview.colorScheme, codeview.indentSize)
-    else
-      screen.set(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy, codeview.lines[line])
-    end
-
-    -- Highlight the current text
-    if codeview.highlights and codeview.highlights[line] then
-      selectSize = codeview.width - lineNumberBarWidth
-      screen.setBackground(codeview.highlights[line])
-      screen.set(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
-      screen.setBackground(codeview.colorScheme.codeBackground)
-    end
-      
-    ::continue::
-  end
-
   -- Render text selections
   if codeview.selections then
     local selection
@@ -1797,23 +1707,51 @@ local function drawCodeView(codeview)
       else
         -- Draw first selection rectangle
         screen.set(codeview.x + selection[2] - dx + lineNumberBarWidth,
-          codeview.y + selection[1] - dy, rep(" ", codeview.width))
+          codeview.y + selection[1] - dy, rep(" ", len(codeview.lines[selection[1]])))
 
         -- Middle slection rectangle
         if selection[3] > selection[1] + 1 then
           for line = selection[1] + 1, selection[3] - 1 do
             screen.set(codeview.x + lineNumberBarWidth - dx + 1,
-              codeview.y + line - dy, rep(" ", codeview.width))
+              codeview.y + line - dy, rep(" ", len(codeview.lines[line])))
           end
         end
 
         -- Last selection rectangle
-        screen.set(codeview.x + 1 - dx + lineNumberBarWidth,
-          codeview.y + selection[3] - dy, rep(" ", selection[4] - dx))
+        screen.set(codeview.x + 1 - dx + lineNumberBarWidth, codeview.y + selection[3] - dy, rep(" ", selection[4] - dx))
       end
     end
-
     screen.setBackground(codeview.colorScheme.codeBackground)
+  end
+
+  -- Render code
+  for line = max(1, dy), max(1, dy) + codeview.height - 1 do
+    if codeview.lines[line] == nil then goto continue end
+
+    currentLineLength = len(codeview.lines[line])
+    if currentLineLength > maxLineLength then
+      maxLineLength = currentLineLength
+    end
+
+    screen.setForeground(codeview.colorScheme.text)
+
+    -- Highlight the current text
+    if codeview.highlights and codeview.highlights[line] then
+      selectSize = codeview.width - lineNumberBarWidth
+      screen.setBackground(codeview.highlights[line])
+      screen.set(codeview.x + lineNumberBarWidth, codeview.y + line - dy, rep(" ", selectSize))
+      screen.setBackground(codeview.colorScheme.codeBackground)
+    end
+
+    if codeview.syntaxHighlighting then
+      drawHighlightedText(codeview.lines[line], codeview.x + lineNumberBarWidth + 1 - dx, 
+        codeview.y + line - dy,
+        codeview.syntaxPatterns, codeview.colorScheme, codeview.indentSize)
+    else
+      screen.set(codeview.x + lineNumberBarWidth + 1 - dx, codeview.y + line - dy, codeview.lines[line])
+    end
+
+    ::continue::
   end
 
   -- Update and render scrollbars
@@ -1859,10 +1797,7 @@ end
 
 function GUI.createCodeView(x, y, width, height, lines, startLine, startCol, selections, highlights, syntaxPatterns,
     colorScheme, syntaxHighlighting, scrollable, indentSize)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
+  checkMultiArg("number", x, y, width, height)
   checkArg(5, lines, "table")
   checkArg(6, startLine, "number")
   checkArg(7, startCol, "number")
@@ -1981,10 +1916,7 @@ local function pickerEventHandler(picker, ...)
 end
 
 function GUI.createColorPicker(x, y, width, height, text, currentColor)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
+  checkMultiArg("number", x, y, width, height)
   checkArg(5, text, "string")
   checkArg(6, currentColor, "number")
 
@@ -2029,10 +1961,7 @@ local function drawTerminal(terminal)
 end
 
 function GUI.createTerminal(x, y, width, height, text, bgColor, textColor, rootDir, bgAlpha)
-  checkArg(1, x, "number")
-  checkArg(2, y, "number")
-  checkArg(3, width, "number")
-  checkArg(4, height, "number")
+  checkMultiArg("number", x, y, width, height)
   checkArg(5, text, "string")
   checkArg(6, bgColor, "number")
   checkArg(7, textColor, "number")

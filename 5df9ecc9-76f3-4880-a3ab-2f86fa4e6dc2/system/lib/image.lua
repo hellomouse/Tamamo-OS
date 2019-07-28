@@ -20,7 +20,7 @@ local bor = bit32.bor
 local bxor = bit32.bxor
 local lshift = bit32.lshift
 
-local setChar = screen.setChar
+local rawSet = screen.rawSet
 local setPaletteColor = component.gpu.setPaletteColor
 local floor = math.floor
 
@@ -118,7 +118,7 @@ function HDGImage:draw(x, y)
       backgroundColor = getcolor(self.bg[index], self.palette_size)
       foregroundColor = getcolor(self.fg[index], self.palette_size)
 
-      setChar(x + x1 - 1, y + y1 - 1, foregroundColor, backgroundColor, uchar(bor(0x2800, self.sym[index]))) -- braille[1 + self.sym[i]]
+      rawSet(x + x1 - 1, y + y1 - 1, foregroundColor, backgroundColor, uchar(bor(0x2800, self.sym[index]))) -- braille[1 + self.sym[i]]
       ::continue::
     end
   end
