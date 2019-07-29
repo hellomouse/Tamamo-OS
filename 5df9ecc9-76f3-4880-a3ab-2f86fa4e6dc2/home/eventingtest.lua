@@ -1,8 +1,10 @@
 local eventing = require('eventing')
 
+local async = eventing.async
+local await = eventing.await
 local loop = eventing.EventLoop:create()
 
-function sleep(seconds)
+local function sleep(seconds)
   local promise = eventing.Promise:create()
   local timer = eventing.Timer:setTimeout(function()
     promise:resolveDeferred()
@@ -11,7 +13,7 @@ function sleep(seconds)
   return promise
 end
 
-local yay1 = async(function()
+local yay1 = eventing.async(function()
   await(sleep(3))
   print('waited for 3 seconds')
 end)
