@@ -90,6 +90,9 @@ end
 
 -- Ty MineOS for this transition function
 function api.transition(color1, color2, position)
+  if position > 1 then position = 1 end
+  if position < 0 then position = 0 end
+
   local r1 = color1 / 65536
   r1 = r1 - r1 % 1
 

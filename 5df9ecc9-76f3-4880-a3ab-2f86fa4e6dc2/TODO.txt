@@ -64,21 +64,69 @@ component.ocemu.log
 
 option to use optimized scroll in panel and codeview
 
+https://github.com/CrazedProgrammer/Surface2/wiki/surf:fillTriangle
+https://github.com/kepler155c/opus/blob/master-1.8/sys/apis/crypto.lua
+
+
+
+codeview longest line should be the scrollbar horz
+
+make sure libs are update to date openos since meulator isn't
+
+
+brailel graphics card
+⢹⣀⣀⣀⣀⣀⣀
+⢸⣷⣾⣀⣸⠰⢾
+⠘ ⠛⠛⠈⠛
+
+
+exit to system shell -> back to system button in terminal
+
+ceil for upper bound in drawRectangle and - 1 for + w and + h fix in screen.lua
+
+containers:
+table of GUIContainers
+- only top is processed for events (uh maybe container.stealAllEvents or something)
+- default only main sys container 
+
+- main sys container
+- app container 
+  - this is removed / added when switching apps
+
+- array of additional containers
+ - for alert() and shit
+ - move alert() and shit to system
+
+
+
+app
+- app.close()
+- app.hide()
+- app.fullScreen
+- app.container
+- app.permissions
+- app.version
+
+-- determined from folder
+- app.name
+- app.icon?
 
 
 gui: 
 list (tabs / vertical)
-table
-dropdown box 
 tree list
 textarea
 brailel canvas
+- semi pixel canvas? lol
 
 color selector 
 popup
 component selector
 file selector 
 alert()
+create dialogBox
+
+GUI animations are all broken lol
 
 
 image lib

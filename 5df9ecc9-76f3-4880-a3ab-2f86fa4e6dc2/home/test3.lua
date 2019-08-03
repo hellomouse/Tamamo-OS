@@ -5,7 +5,7 @@ local screen = require("screen")
 screen.clear()
 screen.update()
 
-local container = gui.createContainer(1, 1, 140, 50, true, true)
+local container = gui.createContainer(1, 1, 140, 50, 0x444444)
 
 
 local function doShit(eventID, ...)
@@ -119,13 +119,16 @@ scrollt.addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole w
 -- container:addChild(scrollt)
 
 local datax, datay = {}, {}
-for i = 1, 500 do
-  datax[#datax + 1] = math.random()
-  datay[#datay + 1] = math.random()
+local TOTAL = 100
+for i = 1, TOTAL do
+  datax[#datax + 1] = i / TOTAL
+  datay[#datay + 1] = math.sin(i / TOTAL * 3.1415)
 end
 
-container:addChild(gui.createChart(90, 30, 50, 15, 0xFFFFFF, 0xFF00FF, 0xFF0000, 0xFFFF00, 0, 1,
-    0.5, 0.5, "t", "s", true, datax, datay, 2)) -- {1,2,3, 1.1}, {4,5,6, 5}
+local chart = gui.createChart(90, 30, 50, 15, 0xFFFFFF, 0xFF00FF, 0xFF0000, 0xFFFF00, 0x0, -1, 1,
+    0.5, 0.5, "t", "s", false, datax, datay, 2)
+
+container:addChild(chart) -- {1,2,3, 1.1}, {4,5,6, 5}
 
 local hs = {}
 local selections = {
@@ -248,6 +251,26 @@ local co = gui.createCodeView(70, 5, 60, 10, {
 gui.LUA_SYNTAX_COLOR_SCHEME, true)
 container:addChild(co)
 
+local dropdown = gui.createDropdown(40, 5, 25, 3, 0xFFFFFF, 0x0, 0xEEEEEE, 0xCCCCCC, 0xAAAAAA)
+dropdown.addOption("1")
+dropdown.addOption("2")
+dropdown.addSeperator()
+dropdown.addOption("This is a long fucking option lol")
+dropdown.addOption("Hello world")
+container:addChild(dropdown)
+
+local table = gui.createTable(40, 10, 40, 8, {
+  {"Waifu Name", "Kitsune?", "Fluff", "Age"},
+  {"Izuna", "Yes", "Y", "8"},
+  {"Senko", "Yes", "Y", "800"},
+  {"Holo", "No", "Y", "idk"},
+  {"Akane", "Yes", "Y", "15"},
+  {"Tamamo", "Yes", "Y", "idk"},
+  {"Kagerou", "No", "Y", "idk"},
+  {"Rem (sucks)", "No", "N", "idk"}
+}, 0xFF0000, 0x0,
+    0x333333, 0xFFFFFF, 0x555555, 0xFFFFFF, true, {0.4, 0.3, 0.15, 0.15})
+container:addChild(table)
 
 container:draw()
 
@@ -255,6 +278,13 @@ if computer then
 print(computer.freeMemory() / computer.totalMemory())
 end
 
+local x1 = 1
+local temp = TOTAL + 1
+
 while true do
     doShit(event.pull())
+    -- chart.removePoint(1)
+    chart.addPoint(x1, math.sin(temp / TOTAL * 3.1415))
+    x1 = x1 + 1 / TOTAL
+    temp = temp + 1
 end

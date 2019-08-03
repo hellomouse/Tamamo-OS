@@ -100,6 +100,7 @@ function HDGImage:draw(x, y)
 
   -- Populate global palette
   for i = 1, self.palette_size do
+    if self.palette_size > 16 then break end
     setPaletteColor(i - 1, self.palette[i])
   end
 

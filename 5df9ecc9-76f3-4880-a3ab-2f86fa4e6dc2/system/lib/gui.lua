@@ -5,6 +5,8 @@ local color = require("color")
 local format = require("format")
 local keyboard = require("keyboard")
 local component = require("component")
+local eventing = require("eventing")
+local system
 
 -- Returned object
 local GUI = {
@@ -20,6 +22,10 @@ local GUI = {
 
   DISABLED_COLOR_1 = 0x5A5A5A,
   DISABLED_COLOR_2 = 0x878787,
+
+  INFO_COLOR = 0x1565C0,
+  WARN_COLOR = 0xFFAB40,
+  ERROR_COLOR = 0xE53935,
 
   BASE_ANIMATION_STEP = 0.05,
 
@@ -128,8 +134,8 @@ local drawText = screen.drawText
 
 -- Helper function
 local function isOutside(guiObj, x, y) -- is x, y outside of guiobj bounds
-  if x < guiObj.x or x > guiObj.x + guiObj.width or
-     y < guiObj.y or y > guiObj.y + guiObj.height then
+  if x < guiObj.x or x >= guiObj.x + guiObj.width or
+     y < guiObj.y or y >= guiObj.y + guiObj.height then
     return true
   end
   return false
@@ -163,14 +169,18 @@ end
 GUIContainer = {}
 GUIContainer.__index = GUIContainer
 
-function GUIContainer:create(x, y, width, height)
+function GUIContainer:create(x, y, width, height, backgroundColor)
   local obj = {}                  -- New object
   setmetatable(obj, GUIContainer) -- make GUIContainer handle lookup
 
   obj.x, obj.y, obj.width, obj.height = x, y, width, height
-  obj.children = {}
-  obj.isChild = false
+  obj.backgroundColor = backgroundColor
+  obj.children, obj.isChild = {}, false
   obj.type = "GUIContainer"
+
+  obj.skipEventHandler = false
+  obj.skipDraw = false
+  obj.stealAllEvents = false
 
   return obj
 end
@@ -222,7 +232,7 @@ function GUIContainer:addChild(guiObject, index)
   end
   guiObject.moveToFront = function() self.children:add(guiObject.remove()) end
   guiObject.moveToBack =  function() self.children:add(guiObject.remove(), 1) end
-  guiObject.remove = function() return self.children:remove(self:findChild(guiObject)) end
+  guiObject.remove = function() return remove(self.children, self:findChild(guiObject)) end
   guiObject.setPos = function(x, y)
     if x then
       guiObject.localX = x - self.x
@@ -243,6 +253,9 @@ function GUIContainer:removeChild(index)
 end
 
 function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to update appearance and offset
+  -- Skip any drawing updates
+  if self.skipDraw then return end 
+
   -- If child is not nil assert that its parent is self
   if child ~= nil and child.parent ~= self then
     error("Child must be a child of this specific GUI container when passed in :draw()")
@@ -256,8 +269,21 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
   -- If container is a child of another but has no parent then don't render
   if self.isChild and not self.parent then return end
 
+  -- Fill background if parent container or has background
+  if not self.isChild or self.backgroundColor then
+    screen.setBackground(self.backgroundColor or 0x0)
+    if child == nil then
+      screen.drawRectangle(self.x, self.y, self.width, self.height)
+    else
+      screen.drawRectangle(child.x, child.y, child.width, child.height)
+    end
+  end
+
   screen.setDrawingBound(self.x, self.y, self.x + self.width - 1, self.y + self.height - 1)
   self.boundX1, self.boundY1, self.boundX2, self.boundY2 = screen.getDrawingBound()
+
+  -- Custom drawing
+  if self.drawObject then self:drawObject() end
 
   for i = 1, #self.children do
     -- Don't render hidden elements
@@ -266,7 +292,7 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
 
     -- If only updating child only update elements that overlap with it
     if child == nil or
-     (child ~= nil and seenChild and
+     (child ~= nil and (seenChild or child.overrideSeenChild) and
       child.x <= self.children[i].x + self.children[i].width and
       child.x + child.width >= self.children[i].x and
       child.y <= self.children[i].y + self.children[i].height and
@@ -293,10 +319,11 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
     ::continue::
   end
 
+  -- Some child elements have a drawAfter function
+  if child and child.drawAfter then child:drawAfter() end
+
   -- Avoids flickering with GUIContainers within containers
-  if not self.isChild then
-    screen.update()
-  end
+  if not self.isChild then screen.update() end
 end
 
 function GUIContainer:resetBounds()
@@ -304,16 +331,22 @@ function GUIContainer:resetBounds()
 end
 
 function GUIContainer:eventHandler(...)
-  for i = 1, #self.children do
-    if not self.children[i].disabled then 
-      self.children[i]:eventHandler(...) 
+  if self.skipEventHandler then return end
+  for i = #self.children, 1, -1 do -- Process higher z-index first
+    if self.children[i] and not self.children[i].disabled then
+      -- Check if the child should steal all events BEFORE
+      -- the event handler as the event handler could remove
+      -- the child or otherwise alter self.children
+      local shouldSteal = self.children[i].stealAllEvents
+      self.children[i]:eventHandler(...)
+      if shouldSteal then return end
     end
   end
 end
 
 -- Wrapper to create a GUIContainer --
-function GUI.createContainer(x, y, width, height)
-  return GUIContainer:create(x, y, width, height)
+function GUI.createContainer(x, y, width, height, backgroundColor)
+  return GUIContainer:create(x, y, width, height, backgroundColor)
 end
 
 
@@ -331,10 +364,14 @@ function GUIObject:create(x, y, width, height)
   local obj = {}               -- New object
   setmetatable(obj, GUIObject) -- make GUIObject handle lookup
 
+  x, y, width, height = floor(x), floor(y), floor(width), floor(height)
+
   obj.x, obj.y, obj.width, obj.height = x, y, width, height
   obj.disabled, obj.hidden = false, false
+  obj.overrideSeenChild = false
   obj.type = "GUIObject"
   obj.eventHandler = nil  -- Runs when event is called, override
+  obj.stealAllEvents = false
 
   return obj
 end
@@ -369,30 +406,33 @@ function Animation:create(aniFunction, stepSize, GUIObj)
 end
 
 function Animation:start(duration, delay)
-  if delay == nil then delay = 0 end
-  if self.thread ~= nil then self:stop() end
+  if not system then system = require("/system/system.lua") end
 
-  self.thread = thread.create(function(GUIObj, duration, delay)
-    os.sleep(delay)
-    local i = 0
-    while i < duration do
-      self.aniFunction(GUIObj, i / duration, self)
-      os.sleep(self.stepSize)
-      i = i + self.stepSize
+  if delay == nil then delay = 0 end
+  if self.timer ~= nil then system.detachTimer(self.timer) end
+
+  local i = 0
+  self.timer = eventing.Timer:setInterval(function()
+    if i > duration then
+      system.detachTimer(self.timer)
+      self.timer = nil
     end
-    self:stop(1)
-  end, self.GUIObj, duration, delay)
+    
+    self.aniFunction(self.GUIObj, i / duration, self)
+    i = i + self.stepSize
+  end, delay)
+  system.attachTimer(self.timer)
 end
 
 -- Pause, resume and stop animation
-function Animation:pause()  self.thread:suspend() end
-function Animation:resume() self.thread:resume() end
+function Animation:pause() system.detachTimer(self.timer) end
+function Animation:resume() system.attachTimer(self.timer) end
 function Animation:stop(percentDone)
   if percentDone == nil then percentDone = 0 end
 
   self.aniFunction(self.GUIObj, percentDone) -- Reset animation to initial state
-  self.thread:kill()
-  self.thread = nil
+  system.detachTimer(self.timer)
+  self.timer = nil
 end
 
 -- Panel --
@@ -777,6 +817,7 @@ local function buttonAnimation(button, percentDone, animation)
       button.currentTextColor = color.transition(button.textColor, button.textPressedColor, 1 - 2 * (percentDone - 0.5))
     end
   end
+
   button:draw() -- Update appearance
 end
 
@@ -1451,8 +1492,8 @@ local function checkIfFillChartValue(cell, chartYValue, chart, y)
     return (chartYValue <= cell and 1) or 0
   end
 
-  local nextChartYValue = chart.maxY - ((y + 0.25) / (chart.height - 2)) * (chart.maxY - chart.minY)
-  if chartYValue > cell and nextChartYValue <= cell then return 1 end
+  local nextChartYValue = chart.maxY - ((y - 0.25) / (chart.height - 2)) * (chart.maxY - chart.minY)
+  if chartYValue <= cell and nextChartYValue > cell then return 1 end
   return 0
 end
 
@@ -1471,6 +1512,10 @@ local function getSubBrailleChart(y, chart, cell1Max, cell2Max)
 end
 
 local function drawChart(chart)
+  -- Clear background
+  screen.setBackground(chart.backgroundColor)
+  screen.drawRectangle(chart.x, chart.y, chart.width, chart.height)
+
   -- Search for min / max value for both x and y
   chart.minX, chart.maxX = chart.xValues[1], chart.xValues[#chart.xValues]
 
@@ -1502,6 +1547,10 @@ local function drawChart(chart)
 
     screen.setForeground(chart.labelSuffixColor)
     drawText(chart.x + xOffset - 2, y, chart.ySuffix)
+
+    -- Additional guideline for the chart
+    screen.setForeground(0x333333)
+    drawText(chart.x + xOffset + 1, y, rep("─", chart.width - xOffset - 3), 1)
   end
   for x = chart.x + xOffset, chart.x + chart.width, xIncPixel do
     xLabel = formatChartValue(chart.minX + xCount * (chart.maxX - chart.minX), chart.round)
@@ -1555,9 +1604,12 @@ local function drawChart(chart)
     cell1Max, cell2Max = cell1Max or -math.huge, cell2Max or -math.huge
 
     -- Render current cell
-    local chartYValue
+    local char
     for y = 0, chart.height - 3 do
-      drawText(x + chart.x + xOffset, y + chart.y, getSubBrailleChart(y, chart, cell1Max, cell2Max))
+      char = getSubBrailleChart(y, chart, cell1Max, cell2Max)
+      if char ~= "⠀" then -- Empty braille, not a space
+        drawText(x + chart.x + xOffset, y + chart.y, char)
+      end
     end
 
     -- Reset cell1 and cell2
@@ -1578,9 +1630,9 @@ local sort_relative = function(ref, t, cmp)
   return r
 end
 
-function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, minY, maxY,
+function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, backgroundColor, minY, maxY,
     xSpacing, ySpacing, xSuffix, ySuffix, fillChart, xValues, yValues, round)
-  checkMultiArg("number", x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, minY, maxY, xSpacing, ySpacing)
+  checkMultiArg("number", x, y, width, height, axisColor, labelColor, labelSuffixColor, chartColor, backgroundColor, minY, maxY, xSpacing, ySpacing)
   checkArg(12, ySuffix, "string")
   checkArg(13, fillChart, "boolean")
   checkArg(14, xValues, "table")
@@ -1595,7 +1647,7 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
   chart.drawObject = drawChart
 
   chart.axisColor, chart.labelColor = axisColor, labelColor
-  chart.labelSuffixColor, chart.color = labelSuffixColor, chartColor
+  chart.labelSuffixColor, chart.color, chart.backgroundColor = labelSuffixColor, chartColor, backgroundColor
   chart.minY, chart.maxY = minY, maxY
   chart.minX, chart.maxX = nil, nil
   chart.xSpacing, chart.ySpacing = xSpacing, ySpacing
@@ -1616,8 +1668,8 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
   end
   chart.addPoint = function(x, y)
     local added = false
-    for i = 1, #chart.xValues do
-      if x < chart.xValues[i] then
+    for i = 2, #chart.xValues do
+      if x < chart.xValues[i - 1] then
         added = true
         insert(chart.xValues, i - 1, x)
         insert(chart.yValues, i - 1, y)
@@ -1626,18 +1678,246 @@ function GUI.createChart(x, y, width, height, axisColor, labelColor, labelSuffix
     if not added then
       chart.xValues[#chart.xValues + 1] = x
       chart.yValues[#chart.yValues + 1] = y
+      chart.maxX = x
     end
     chart:draw()
   end
   chart.removePoint = function(i)
     remove(chart.xValues, i)
     remove(chart.yValues, i)
+    if i == 1 then chart.minX = chart.xValues[1] end
     chart:draw()
   end
 
   return chart
 end
 
+-- Dropdown --
+------------------------------------------------
+local function drawDropdown(dropdown)
+  dropdown.height = dropdown._seperators + dropdown._size * dropdown.itemHeight + 4 -- 3 for height, 1 for shadow
+
+  -- Top part of the drawing --
+  screen.setBackground(dropdown.backgroundColor)
+  screen.drawRectangle(dropdown.x, dropdown.y, dropdown.width, 3)
+  screen.setForeground(dropdown.textColor)
+  drawText(dropdown.x + 1, dropdown.y + 1, 
+    (dropdown.options[dropdown.selected] and dropdown.options[dropdown.selected][4]) or "Select an option...")
+  
+  screen.setBackground(dropdown.arrowBackgroundColor)
+  screen.drawRectangle(dropdown.x + dropdown.width - 3, dropdown.y, 3, 3)
+  screen.setForeground(dropdown.arrowColor)
+
+  if dropdown._toggled then
+    drawText(dropdown.x + dropdown.width - 2, dropdown.y + 1, "▲")
+  else
+    drawText(dropdown.x + dropdown.width - 2, dropdown.y + 1, "▼")
+  end
+end
+
+local function drawDropdownAfter(dropdown)
+  -- Temporarily remove drawing bounds so the dropdown menu can extend
+  -- beyond the boundaries of the box
+  if dropdown._toggled then
+    -- Draw the dropdown options
+    local y = dropdown.y + 3
+
+    for i = 1, dropdown._size do
+      screen.setBackground(dropdown.elementBackgroundColor)
+      screen.setForeground(dropdown.options[i][3])
+
+      if dropdown.options[i][2] then -- Disabled
+        screen.setForeground(GUI.DISABLED_COLOR_2)
+      end
+
+      screen.drawRectangle(dropdown.x, y, dropdown.width, dropdown.itemHeight)
+      drawText(dropdown.x + 1, y + floor(dropdown.itemHeight / 2), format.trimLength(dropdown.options[i][4], dropdown.width - 2))
+
+      -- Visual seperator
+      if dropdown.options[i][6] then
+        screen.setForeground(GUI.DISABLED_COLOR_2)
+        screen.set(dropdown.x, y + dropdown.itemHeight, rep("─", dropdown.width))
+        y = y + 1
+      end
+
+      y = y + dropdown.itemHeight
+    end
+
+    -- Shadow on the bottom
+    screen.setForeground(0x0)
+    drawText(dropdown.x, dropdown.y + dropdown.height - 1, rep("▀", dropdown.width), 0.5)
+  end
+end
+
+local function dropdownEventHandler(dropdown, ...)
+  local etype = select(1, ...)
+  if etype == "touch" or etype == "drag" then
+    local x, y = select(3, ...), select(4, ...)
+
+    -- Bound checking
+    if x < dropdown.x or x > dropdown.x + dropdown.width or y < dropdown.y then return end
+    if y < dropdown.y + 3 then  -- Toggle open / close
+      dropdown._toggled = not dropdown._toggled
+      dropdown:draw()           -- Clicking on elements
+    elseif dropdown._toggled then
+      local y1 = dropdown.y + 3
+
+      for i = 1, dropdown._size do
+        -- Found a valid selection
+        if y >= y1 and y < y1 + dropdown.itemHeight then
+          dropdown.selected = i
+          dropdown._toggled = false
+          dropdown:draw()
+        end
+
+        if dropdown.options[i][6] then y1 = y1 + 1 end
+        y1 = y1 + dropdown.itemHeight
+      end
+    end
+  end
+end
+
+local function findDropdownIndex(index, dropdown)
+  for i = 1, dropdown._size do
+    if dropdown.options[i][1] == index then
+      return i
+    end
+  end
+  error("Dropdown does not contain ID " .. index)
+end
+
+function GUI.createDropdown(x, y, width, itemHeight, backgroundColor, textColor, arrowBackgroundColor, arrowColor, elementBackgroundColor)
+  checkMultiArg("number", x, y, width, itemHeight, backgroundColor, textColor, arrowBackgroundColor, arrowColor, elementBackgroundColor)
+
+  local dropdown = GUIObject:create(x, y, width, 3)
+
+  dropdown.type = "dropdown"
+  dropdown.drawObject = drawDropdown
+  dropdown.drawAfter = drawDropdownAfter
+  dropdown.eventHandler = dropdownEventHandler
+
+  dropdown.itemHeight = itemHeight
+  dropdown.backgroundColor, dropdown.textColor = backgroundColor, textColor
+  dropdown.arrowBackgroundColor, dropdown.arrowColor = arrowBackgroundColor, arrowColor
+  dropdown.elementBackgroundColor = elementBackgroundColor
+  dropdown.options = {}
+  dropdown.selected = 0
+  dropdown.overrideSeenChild = true
+
+  dropdown._toggled = false
+  dropdown._size = 0
+  dropdown._seperators = 0
+
+  dropdown.addOption = function(id, disabled, color, displayText, onTouch)
+    disabled = disabled or false
+    color = color or textColor
+    displayText = displayText or id
+
+    dropdown._size = dropdown._size + 1
+    dropdown.options[dropdown._size] = { id, disabled, color, displayText, onTouch }
+    dropdown:draw()
+  end
+
+  dropdown.removeOption = function(index)
+    if type(index) == "string" then
+      index = findDropdownIndex(index, dropdown)
+    end
+
+    dropdown._size = dropdown._size - 1
+    remove(dropdown.options, index)
+    dropdown:draw()
+  end
+
+  dropdown.addSeperator = function()
+    if dropdown._size == 0 then return end
+    dropdown.options[dropdown._size][6] = true
+    dropdown._seperators = dropdown._seperators + 1
+    dropdown:draw()
+  end
+
+  dropdown.getOption = function(index)
+    if type(index) == "string" then
+      index = findDropdownIndex(index, dropdown)
+    end
+    return dropdown.options[index]
+  end
+
+  dropdown.clear = function()
+    dropdown.options = {}
+    dropdown._size = 0
+    dropdown:draw()
+  end
+
+  dropdown.size = function()
+    return dropdown._size
+  end
+
+  return dropdown
+end
+
+-- Table --
+------------------------------------------------
+local function drawTable(GUItable)
+  local colWidth, colX, orgFg
+
+  -- Fill background color with row1
+  screen.setBackground(GUItable.rowOddBackgroundColor)
+  screen.fill(GUItable.x, GUItable.y, GUItable.width, GUItable.height, " ")
+
+  for row = 1, #GUItable.data do
+    if row == 1 then -- Header colors --
+      screen.setBackground(GUItable.headerBackgroundColor)
+      screen.setForeground(GUItable.headerTextColor)
+    elseif (row - 1) % 2 == 0 then -- Even (header doesn't count)
+      screen.setBackground(GUItable.rowEvenBackgroundColor)
+      screen.setForeground(GUItable.rowEvenTextColor)
+    else -- Odd (header doesn't count)
+      screen.setBackground(GUItable.rowOddBackgroundColor)
+      screen.setForeground(GUItable.rowOddTextColor)
+    end
+
+    -- Prefill row color
+    screen.set(GUItable.x, GUItable.y + row - 1, rep(" ", GUItable.width))
+
+    colX = GUItable.x
+    for item = 1, #GUItable.data[row] do
+      colWidth = floor((GUItable.colWidths and GUItable.width * GUItable.colWidths[item]) or GUItable.width / #GUItable.data[row])
+      screen.set(colX, GUItable.y + row - 1, format.trimLength(GUItable.data[row][item], colWidth))
+      colX = colX + colWidth
+
+      if GUItable.verticalSeperator and item ~= #GUItable.data[row] then
+        orgFg = screen.getForeground()
+        screen.setForeground(0x0)
+        drawText(colX - 1, GUItable.y + row - 1, "│", 0.5)
+        screen.setForeground(orgFg)
+      end
+    end
+  end
+end
+
+function GUI.createTable(x, y, width, height, data, headerBackgroundColor, headerTextColor,
+    rowEvenBackgroundColor, rowEvenTextColor, rowOddBackgroundColor, rowOddTextColor, verticalSeperator, colWidths)
+  rowOddBackgroundColor = rowOddBackgroundColor or rowEvenBackgroundColor
+  rowOddTextColor = rowOddTextColor or rowEvenTextColor
+
+  checkMultiArg("number", x, y, width, height, 1, headerBackgroundColor, headerTextColor, rowEvenBackgroundColor, rowEvenTextColor,
+    rowOddBackgroundColor, rowOddTextColor)
+  checkArg(5, data, "table")
+  checkArg(12, verticalSeperator, "boolean", "nil")
+  checkArg(13, colWidths, "table", "nil")
+
+  local GUItable = GUIObject:create(x, y, width, height)
+
+  GUItable.type = "table"
+  GUItable.drawObject = drawTable
+
+  GUItable.data, GUItable.headerBackgroundColor, GUItable.headerTextColor = data, headerBackgroundColor, headerTextColor
+  GUItable.rowEvenBackgroundColor, GUItable.rowEvenTextColor = rowEvenBackgroundColor, rowEvenTextColor
+  GUItable.rowOddBackgroundColor, GUItable.rowOddTextColor = rowOddBackgroundColor, rowOddTextColor
+  GUItable.verticalSeperator, GUItable.colWidths = verticalSeperator, colWidths
+
+  return GUItable
+end
 
 -- Code View --
 ------------------------------------------------

@@ -187,3 +187,4 @@ process library exception handler crashed: invalid palette index
 process library exception handler crashed: invalid palette index
 process library exception handler crashed: invalid palette index
 process library exception handler crashed: invalid palette index
+false:/lib/process.lua:101: attempt to call field 'dup' (a nil value)

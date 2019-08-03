@@ -16,5 +16,6 @@ do
   loadfile("/lib/core/boot.lua")(loadfile)
 end
 
+require("/system/interface/taskbar.lua")
 local system = require("/system/system.lua")
 system.mainLoop()

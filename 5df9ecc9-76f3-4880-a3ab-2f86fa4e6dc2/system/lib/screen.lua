@@ -243,7 +243,7 @@ local function setDrawingBound(x1, y1, x2, y2, useCurrent)
   drawY1, drawY2 = max(1, drawY1), min(bufferHeight, drawY2)
 
   -- Invalid corners (x1, y1) must be top left corner
-  if drawX1 >= drawX2 or drawY1 >= drawY2 then
+  if drawX1 > drawX2 or drawY1 > drawY2 then
     error("Rectangle defined by corners (" .. drawX1 .. ", " .. drawY1 .. 
       "), (" .. drawX2 .. ", " .. drawY2 .. ") is not valid (First corner must be top left)")
   end
@@ -402,29 +402,25 @@ local function setAdaptive(x, y, cfg, cbg, alpha, blendBg, blendBgalpha, symbol)
   if x < 1 or y < 1 or x > bufferWidth or y > bufferHeight then return "" end
 
   if alpha == 1 and blendBgalpha then
-    if cbg ~= nil and cbg ~= false then setBackground(cbg) end
-    if cfg ~= nil and cfg ~= false then setForeground(cfg) end
+    if cbg ~= nil and cbg ~= false then currentBackground = cbg end
+    if cfg ~= nil and cfg ~= false then currentForeground = cfg end
     return symbol
   end
 
-  local bg, fg, sym = rawGet(x, y)
+  local rawBg, rawFg, rawSym = rawGet(x, y)
+  local prominentColor = color.getProminentColor(rawFg, rawBg, rawSym)
 
   if blendBg then
-    if blendBgalpha then setBackground(color.blend(bg, cbg, 1 - alpha))
-    else setBackground(color.getProminentColor(fg, bg, sym)) end
+    if blendBgalpha then currentBackground = color.blend(rawBg, cbg, 1 - alpha)
+    else currentBackground = prominentColor end
   end
-  setForeground(color.blend(cfg, fg, alpha))
+  currentForeground = color.blend(cfg, prominentColor, alpha)
 
   -- If filling with a space it's better if one fills with the background symbol
   -- instead of losing accuracy by overwriting it with a space
-  ::symbolcheck::
-  if sym == nil then bg, fg, sym = rawGet(x, y) end -- Since the goto skips this line
-
   if symbol == " " then
-    setForeground(color.blend(fg, cbg, 1 - alpha))
-    return sym
-  elseif symbol == "█" or symbol == "⣿" then  -- Full block doesn't blend with current background
-    return symbol
+    currentForeground = color.blend(rawFg, cbg, 1 - alpha)
+    return rawSym
   end
   return symbol -- Otherwise fill with the symbol
 end
@@ -445,6 +441,7 @@ local function processVariables(x, y, w, h, alpha, dontFloor)
 
   local currentForegroundSave, currentBackgroundSave = currentForeground, currentBackground
   local cfg, cbg = normalizeColor(currentForeground), normalizeColor(currentBackground)
+
   return true, x, y, w, h, alpha, currentForegroundSave, currentBackgroundSave, cfg, cbg
 end
 
@@ -553,8 +550,8 @@ local function drawBrailleRectangle(x, y, w, h, alpha)
   local subChar
   cfg = cbg -- Use background color for all drawing
 
-  for x1 = floor(x), floor(x + w) do
-    for y1 = floor(y), floor(y + h) do
+  for x1 = floor(x), ceil(x + w) - 1 do
+    for y1 = floor(y), ceil(y + h) - 1 do
       if x1 < 1 or y1 < 1 or x1 > bufferWidth then goto continue end
       if y1 > bufferHeight then break end
 
@@ -941,8 +938,11 @@ local function clear(color, alpha)
   checkArg(1, color, "number", "nil")
   checkArg(2, alpha, "number", "nil")
 
+  local bx1, by1, bx2, by2 = getDrawingBound()
+  resetDrawingBound()
   setBackground(color or 0x0)
   drawRectangle(1, 1, bufferWidth, bufferHeight, alpha, " ")
+  setDrawingBound(bx1, by1, bx2, by2)
 
   updateBoundX1, updateBoundX2 = 1, bufferWidth
   updateBoundY1, updateBoundY2 = 1, bufferHeight
