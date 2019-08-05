@@ -23,8 +23,9 @@ local GUI = {
   DISABLED_COLOR_1 = 0x5A5A5A,
   DISABLED_COLOR_2 = 0x878787,
 
+  SUCCESS_COLOR = 0x00C853,
   INFO_COLOR = 0x1565C0,
-  WARN_COLOR = 0xFFAB40,
+  WARN_COLOR = 0xF57F17,
   ERROR_COLOR = 0xE53935,
 
   BASE_ANIMATION_STEP = 0.05,
@@ -232,7 +233,11 @@ function GUIContainer:addChild(guiObject, index)
   end
   guiObject.moveToFront = function() self.children:add(guiObject.remove()) end
   guiObject.moveToBack =  function() self.children:add(guiObject.remove(), 1) end
-  guiObject.remove = function() return remove(self.children, self:findChild(guiObject)) end
+  guiObject.remove = function()
+    -- DO NOT remove the isChild property
+    guiObject.parent, guiObject.firstParent = nil, nil
+    return remove(self.children, self:findChild(guiObject))
+  end
   guiObject.setPos = function(x, y)
     if x then
       guiObject.localX = x - self.x

@@ -77,12 +77,24 @@ make sure libs are update to date openos since meulator isn't
 brailel graphics card
 ⢹⣀⣀⣀⣀⣀⣀
 ⢸⣷⣾⣀⣸⠰⢾
-⠘ ⠛⠛⠈⠛
+⠘⠉⠛⠛⠙⠋⠉
 
 
 exit to system shell -> back to system button in terminal
 
-ceil for upper bound in drawRectangle and - 1 for + w and + h fix in screen.lua
+
+todo:
+-1: background container code
+0. system settings
+1. desktop
+2. execute app
+3. taskbar
+
+
+make variables like GUI. and shit local
+
+
+give credit to lbp for thing (table seralize)
 
 containers:
 table of GUIContainers
@@ -93,9 +105,6 @@ table of GUIContainers
 - app container 
   - this is removed / added when switching apps
 
-- array of additional containers
- - for alert() and shit
- - move alert() and shit to system
 
 
 

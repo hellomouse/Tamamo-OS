@@ -100,7 +100,7 @@ function HDGImage:draw(x, y)
 
   -- Populate global palette
   for i = 1, self.palette_size do
-    if self.palette_size > 16 then break end
+    if i > 16 then break end
     setPaletteColor(i - 1, self.palette[i])
   end
 
@@ -137,7 +137,6 @@ function HDGImage:unload()
   self.fg = nil
   self.bg = nil
   self.sym = nil
-  screen.resetPalette()
 end
 
 -- Helper function, decompresses a string

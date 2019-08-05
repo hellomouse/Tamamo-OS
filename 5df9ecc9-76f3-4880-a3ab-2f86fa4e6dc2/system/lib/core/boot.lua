@@ -1,4 +1,4 @@
--- called from /init.lua
+-- Called from /init.lua
 local raw_loadfile = ...
 
 _G._OSVERSION = "Tamamo OS 1.0.0"
@@ -21,9 +21,9 @@ computer.shutdown = function(reboot)
 end
 
 -- Look for screen component
-local screen = component.list('screen', true)()
-for address in component.list('screen', true) do
-  if #component.invoke(address, 'getKeyboards') > 0 then
+local screen
+for address in component.list("screen", true) do
+  if #component.invoke(address, "getKeyboards") > 0 then
     screen = address
     break
   end
@@ -199,7 +199,7 @@ end
 status("Initializing system...")
 progressbar(1.0)
 
-computer.pushSignal("init") -- so libs know components are initialized.
+computer.pushSignal("init") -- So libs know components are initialized.
 require("event").pull(1, "init") -- Allow init processing.
 _G.runlevel = 1
 

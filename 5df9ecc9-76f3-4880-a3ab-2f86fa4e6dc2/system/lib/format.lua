@@ -79,4 +79,111 @@ function format.getBrailleChar(a, b, c, d, e, f, g, h)
   return uchar(bor(0x2800, a + 8 * b + 2 * c + 16 * d + 4 * e + 32 * f + 64 * g + 128 * h))
 end
 
+function format.serialise(tbl_in, pretty, allow_multref, stringify_unknown)
+	local tabs = setmetatable({}, { __index = function(tbl, key)
+		local value = ("\t"):rep(key)
+		tbl[key] = value
+		return value
+	end })
+	local output = {}
+	local tracker = {}
+	local function impl(tbl, depth)
+		if tracker[tbl] then
+			if allow_multref then
+				table.insert(output, "[see above]")
+				return
+			else
+				error("unable to serialise multiple references to the same subtable", 3)
+			end
+		end
+		local function insert_value(value)
+			local value_type = type(value)
+			if  value_type ~= "boolean"
+			and value_type ~= "string"
+			and value_type ~= "number"
+			and value_type ~= "table" then
+				if stringify_unknown then
+					value = ("[%s]"):format(tostring(value))
+				else
+					error(("unable to serialise value '%s'"):format(tostring(value)), 3)
+				end
+			end
+			if value_type == "string" then
+				table.insert(output, ("%q"):format(value))
+			elseif value_type == "table" then
+				impl(value, depth + 1)
+			else
+				table.insert(output, tostring(value))
+			end
+			table.insert(output, pretty and ",\n" or ",")
+		end
+		tracker[tbl] = true
+		if not next(tbl) then
+			table.insert(output, "{}")
+			return
+		end
+		table.insert(output, pretty and "{\n" or "{")
+		local length = #tbl
+		if length == 0 then
+			length = nil
+		else
+			for key, value in ipairs(tbl) do
+				if pretty then
+					table.insert(output, tabs[depth + 1])
+				end
+				insert_value(value)
+				length = key
+			end
+		end
+		for key, value in pairs(tbl) do
+			local key_type = type(key)
+			if not (length and key_type == "number" and key <= length) then
+				if pretty then
+					table.insert(output, tabs[depth + 1])
+				end
+				if  key_type ~= "boolean"
+				and key_type ~= "string"
+				and key_type ~= "number" then
+					if stringify_unknown then
+						key = ("[%s]"):format(tostring(key))
+					else
+						error(("unable to serialise key '%s'"):format(tostring(key)), 3)
+					end
+				end
+				if key_type == "string" then
+					if key:find("^[_%a][_%w]*$") then
+						table.insert(output, key)
+					else
+						table.insert(output, ("[%q]"):format(key))
+					end
+				else
+					table.insert(output, "[")
+					table.insert(output, tostring(key))
+					table.insert(output, "]")
+				end
+				table.insert(output, pretty and " = " or "=")
+				insert_value(value)
+			end
+		end
+		if pretty then
+			table.insert(output, tabs[depth])
+		end
+		table.insert(output, "}")
+	end
+	impl(tbl_in, 0)
+	return table.concat(output):gsub(",}$", "}") -- Remove trailing comma
+end
+
+function format.unserialise(str)
+	local func, err = loadstring("return " .. str)
+	if not func then
+		error("Serialised data corrupt", 2)
+	end
+	local ok, tbl = pcall(setfenv(func, {}))
+	if not ok then
+		error("Serialised data corrupt", 2)
+	end
+	return tbl
+end
+
 return format

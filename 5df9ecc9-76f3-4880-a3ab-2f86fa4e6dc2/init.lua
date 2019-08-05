@@ -13,7 +13,7 @@ do
     invoke(addr, "close", handle)
     return load(buffer, "=" .. file, "bt", _G)
   end]], "=loadfile", "bt", _G)()
-  loadfile("/lib/core/boot.lua")(loadfile)
+  loadfile("/system/lib/core/boot.lua")(loadfile)
 end
 
 require("/system/interface/taskbar.lua")
