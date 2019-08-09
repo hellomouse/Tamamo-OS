@@ -72,7 +72,7 @@ h.nextInput = j
 
 local a = gui.createFramedButton(50, 20, 16, 3, "BUTTON with a really long name?", 0x777777,0x777777, 0xAAAAAA, 0xFFFFFF, 1)
 a.switchMode = true
-container:addChild(  a)
+container:addChild(a)
 
 local b = gui.createAdaptiveButton(50, 25, "BUTTON", 0x777777,0xFFFFFF, 0xAAAAAA, 0xFFFFFF, 1)
 container:addChild(b)
@@ -84,7 +84,7 @@ end
 
 
 local p = gui.createPanel(30, 30, 40, 20, 0xFFFFFF, 1, 2)
-p.addChild(gui.createInput(1, 1, 30, 3, 0x333333, 0xFFFFFF, 0x555555, 0xFFFFFF, 1, 0x888888, "MM/DD/YYYY"))
+p:addChild(gui.createInput(1, 1, 30, 3, 0x333333, 0xFFFFFF, 0x555555, 0xFFFFFF, 1, 0x888888, "MM/DD/YYYY"))
 --container:addChild(p)
 
 
@@ -104,7 +104,7 @@ container:addChild(gui.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
 
 local bar = gui.createProgressBar(10, 45, 40, 0x333333, 0xFF0000, 0.5, true, 0xFFFFFF, "Hello ")
 container:addChild(bar)
-bar.setValue(0.2)
+bar:setValue(0.2)
 
 container:addChild(gui.createSlider(10, 47, 20, 0x333333, 0xFF0000, 0xFFFFFF, 0xFFFFFF, 10, 50, 30, true, true, 2, "BWBellairs "))
 
@@ -115,7 +115,7 @@ container:addChild(gui.createCheckbox(90, 20, "test", 0x333333, 0xFF0000, 0xFFFF
 
 
 local scrollt = gui.createPanel(90, 1, 25, 20, 0x111111, 1, 1, true, true, true, 30, 100)
-scrollt.addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. Ааааа, аААаа! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear!", 0xFFFFFF, 30))
+scrollt:addChild(gui.createTextBox(1, 1, " Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear! To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. To all those around us, it's not worth your while If we were to turn you to ashes. We thank you profoundly, and bow to you deeply, From the mightiest nation in all the world. Ааааа, аААаа! Our Soviet Union conquers The whole world from Europe to the Neva to the east Above the ground everywhere will sing: The capital, vodka, the Soviet bear!", 0xFFFFFF, 30))
 -- container:addChild(scrollt)
 
 local datax, datay = {}, {}
@@ -252,11 +252,11 @@ gui.LUA_SYNTAX_COLOR_SCHEME, true)
 container:addChild(co)
 
 local dropdown = gui.createDropdown(40, 5, 25, 3, 0xFFFFFF, 0x0, 0xEEEEEE, 0xCCCCCC, 0xAAAAAA)
-dropdown.addOption("1")
-dropdown.addOption("2")
-dropdown.addSeperator()
-dropdown.addOption("This is a long fucking option lol")
-dropdown.addOption("Hello world")
+dropdown:addOption("1")
+dropdown:addOption("2")
+dropdown:addSeperator()
+dropdown:addOption("This is a long fucking option lol")
+dropdown:addOption("Hello world")
 container:addChild(dropdown)
 
 local table = gui.createTable(40, 10, 40, 8, {
@@ -272,6 +272,14 @@ local table = gui.createTable(40, 10, 40, 8, {
     0x333333, 0xFFFFFF, 0x555555, 0xFFFFFF, true, {0.4, 0.3, 0.15, 0.15})
 container:addChild(table)
 
+local list = gui.createList(10, 20, 15, 50, 15, 0, 0x0, 0xFFFFFF, 0x222222, 0xFFFFFF, 0xFF0000, 0x0, true, true)
+list:addItem("test")
+list:addItem("test2")
+list:addItem("testasdadasd")
+list:addItem("testasdasdadasdasdasadasd")
+list.paddingY = 2
+container:addChild(list)
+
 container:draw()
 
 if computer then
@@ -284,7 +292,7 @@ local temp = TOTAL + 1
 while true do
     doShit(event.pull())
     -- chart.removePoint(1)
-    chart.addPoint(x1, math.sin(temp / TOTAL * 3.1415))
+    chart:addPoint(x1, math.sin(temp / TOTAL * 3.1415))
     x1 = x1 + 1 / TOTAL
     temp = temp + 1
 end

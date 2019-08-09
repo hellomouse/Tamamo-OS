@@ -86,6 +86,9 @@ function system.getDefaultUserSettings()
 	}
 end
 
+-- TODO remove
+settings = system.getDefaultUserSettings()
+
 -- Event handler for system --
 function system.processEvents(eventID, ...)
   if not eventID then return end -- Can be nil if no event was pulled for some time
@@ -238,9 +241,18 @@ function system.confirmDialog(text, color)
   return returnedEventEmitter
 end
 
+function system.syncifyDialogBox(eventEmitter)
+  local continue, returned = true, nil
+  eventEmitter:addGlobalListener(function(...) 
+    continue, returned = false, {...}
+  end)
+  while continue do system.processEvents(event.pull()) end
+  return returned
+end
+
 system.createMessageBox = createMsgBox
 
-system.doTerm = false
+system.doTerm = true
 
 
 
@@ -251,39 +263,38 @@ function system.mainLoop()
   screen.clear()
   screen.update(true) -- Force update screen after reboot
 
-  system.loop.signals:addGlobalListener(function(...)
-    system.processEvents(...)
-  end)
+  -- system.loop.signals:addGlobalListener(function(...)
+  --   system.processEvents(...)
+  -- end)
 
-  local button = GUI.createButton(20, 30, 10, 3, "Alert", 0xFFFFFF, 0x0,  0xFF0000, 0x0, 0xFFF000)
-  button.onClick = function()
-    local e = system.confirmDialog("Hello", GUI.ERROR_COLOR)
-    e:on("ok", function() system.successDialog("You clicked ok!") end)
-    e:on("cancel", function() system.errorDialog("WHY U CANCEL") end)
-    -- system.createMessageBox(GUI.ERROR_COLOR, "(x) Doubt", "⢹⣀⣀⣀⣀⣀⣀\n⢸⣷⣾⣀⣸⠰⢾   This is supposed to be a GPU\n⠘⠉⠛⠛⠙⠋⠉", {a = "b"})
-    -- button.hidden = true
-  end
-  system.container:addChild(button)
-  system.container:addChild(GUI.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
-
-  system.loop:start()
-
-  --   if system.doTerm then
-  --     local result, reason = xpcall(require("shell").getShell(), function(msg)
-  --       return tostring(msg).."\n"..debug.traceback()
-  --     end)
-  --     if not result then
-  --       io.stderr:write((reason ~= nil and tostring(reason) or "unknown error") .. "\n")
-  --       io.write("Press any key to continue.\n")
-  --       os.sleep(0.5)
-  --       require("event").pull("key")
-  --     end
-  --   else
-  --     screen.clear()
-  --     screen.update(true)
-  --     require("event").pull("key")
-  --   end
+  -- local button = GUI.createButton(20, 30, 10, 3, "Alert", 0xFFFFFF, 0x0,  0xFF0000, 0x0, 0xFFF000)
+  -- button.onClick = function()
+  --   local e = system.confirmDialog("Hello", GUI.ERROR_COLOR)
+  --   e:on("ok", function() system.successDialog("You clicked ok!") end)
+  --   e:on("cancel", function() system.errorDialog("WHY U CANCEL") end)
+  --   -- system.createMessageBox(GUI.ERROR_COLOR, "(x) Doubt", "⢹⣀⣀⣀⣀⣀⣀\n⢸⣷⣾⣀⣸⠰⢾   This is supposed to be a GPU\n⠘⠉⠛⠛⠙⠋⠉", {a = "b"})
+  --   -- button.hidden = true
   -- end
+  -- system.container:addChild(button)
+  -- system.container:addChild(GUI.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
+
+  -- system.loop:start()
+
+  if system.doTerm then
+    local result, reason = xpcall(require("shell").getShell(), function(msg)
+      return tostring(msg).."\n"..debug.traceback()
+    end)
+    if not result then
+      io.stderr:write((reason ~= nil and tostring(reason) or "unknown error") .. "\n")
+      io.write("Press any key to continue.\n")
+      os.sleep(0.5)
+      require("event").pull("key")
+    end
+  else
+    screen.clear()
+    screen.update(true)
+    require("event").pull("key")
+  end
 end
 
 return system
