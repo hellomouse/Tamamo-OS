@@ -11,6 +11,7 @@ local remove = table.remove
 -- Variables --
 local openedPrograms = {}
 local settings = {}
+local backgroundContainers = {}
 
 -- The API itself --
 local system = {}
@@ -92,9 +93,34 @@ settings = system.getDefaultUserSettings()
 -- Event handler for system --
 function system.processEvents(eventID, ...)
   if not eventID then return end -- Can be nil if no event was pulled for some time
+  local processEventsAfterThisIndex = 0
 
-  system.container:eventHandler(eventID, ...)
+  -- Event blocking containers do not update lower containers --
+  -- Locate the highest container which for to use a container for --
+  for i = #backgroundContainers, 1, -1 do
+    if backgroundContainers[i].blockEvents then
+      processEventsAfterThisIndex = i
+      break
+    end
+  end
+
+  -- Process Events --
+  if processEventsAfterThisIndex <= 0 then
+    system.container:eventHandler(eventID, ...)
+  end
+  for i = processEventsAfterThisIndex or 1, #backgroundContainers do
+    if backgroundContainers[i] ~= nil then
+      backgroundContainers[i]:eventHandler(eventID, ...)
+    end
+  end
+
+  -- Draw containers bottom up --
   system.container:draw()
+  for i = 1, #backgroundContainers do
+    if backgroundContainers[i] ~= nil then
+      backgroundContainers[i]:draw()
+    end
+  end
 end
 
 -- Short cut for attach / detach timer
@@ -170,14 +196,71 @@ function system.executeProgram(programPath)
 end
 
 -- System popups --
-local function _createCloseableContainer(buttonText, textBoxText, color)
-  local container = GUI.createContainer(0, 0, screen.getWidth(), screen.getHeight())
+local function addCloseableContainer(container)
+  container.blockEvents = true
+
+  -- Add to free spot, or if none then to end of table
+  local n = #backgroundContainers
+  local indexToAddAt = n + 1
+  for i = 1, n do
+    if backgroundContainers[i] == nil then
+      indexToAddAt = i
+    end
+  end
+  backgroundContainers[indexToAddAt] = container
+
+  -- Return a function to close the container --
+  local function close()
+    backgroundContainers[indexToAddAt] = nil
+  end
+
+  return close, indexToAddAt
+end
+
+
+-- Add dialog functionality to system --
+require("/system/interface/dialog.lua")(system, settings)
+
+system.doTerm = true
+
+
+
+-- Execute the main system loop
+function system.mainLoop()
+  -- Palette needs to be reset on startup as it is presistent
+  screen.resetPalette()
+  screen.clear()
+  screen.update(true) -- Force update screen after reboot
+
+  -- -- Start OS code
+  system.loop.signals:addGlobalListener(function(...)
+    system.processEvents(...)
+  end)
+
+  local button = GUI.createButton(20, 30, 10, 3, "Alert", 0xFFFFFF, 0x0,  0xFF0000, 0x0, 0xFFF000)
+  button.onClick = function()
+    local e = system.confirmDialog("Hello", GUI.ERROR_COLOR)
+    e:on("ok", function() system.successDialog("You clicked ok!") end)
+    e:on("cancel", function() system.errorDialog("WHY U CANCEL") end)
+    -- system.createMessageBox(GUI.ERROR_COLOR, "(x) Doubt", "⢹⣀⣀⣀⣀⣀⣀\n⢸⣷⣾⣀⣸⠰⢾   This is supposed to be a GPU\n⠘⠉⠛⠛⠙⠋⠉", {a = "b"})
+    -- button.hidden = true
+  end
+  system.container:addChild(button)
+  system.container:addChild(GUI.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
+  system.container:addChild(GUI.createProgressIndicator(3, 22, 0x333333, 0xFF0000, 0xFFAA00))
+
+
+
+
+
+  local buttonText, textBoxText, color = "test", "idk lmao", 0xFFFF00
+  local container = GUI.createContainer(0, 40, screen.getWidth(), screen.getHeight() / 2)
   local startY = screen.getHeight() / 2 - 5
-  container.stealAllEvents = true
+  container.blockEvents = true
 
   -- Button and label --
-  local okButton = GUI.createButton(screen.getWidth() * 0.75, startY + 7, 14, 1, buttonText, color, 0xEEEEEE, color, 0xFFFFFF)
-  local textbox = GUI.createTextBox(screen.getWidth() * 0.15, startY + 3, textBoxText, 0xFFFFFF, screen.getWidth() * 0.7, 3)
+  local okButton = GUI.createButton(screen.getWidth() * 0.75, 2, 14, 1, buttonText, color, 0xEEEEEE, color, 0xFFFFFF)
+  local textbox = GUI.createTextBox(screen.getWidth() * 0.15, 2, textBoxText, 0xFFFFFF, screen.getWidth() * 0.7, 3)
 
   -- Event handlers, textbox used to intercept global keypresses --
   local returnedEventEmitter = eventing.EventEmitter:create()
@@ -196,105 +279,33 @@ local function _createCloseableContainer(buttonText, textBoxText, color)
   container:addChild(textbox)
   container:addChild(okButton)
   container.drawObject = function(container)
-    screen.clear(0x0, settings.interfaceTransparencyEnabled and 0.5 or 1) -- Darken background
     screen.setBackground(0x111111)
     screen.drawRectangle(1, startY + 1, screen.getWidth(), 8)
     screen.setBackground(color)
     screen.drawBrailleRectangle(1, startY + 1, screen.getWidth() / 3, 0.5)
   end
 
-  local function drawContainer()
-    system.container.skipDraw = false
-    system.addContainer(container)
-    system.container:draw()
-    system.container.skipDraw = true
-  end
-  
-  return container, returnedEventEmitter, close, drawContainer, startY
-end
+  -- addCloseableContainer(container)
 
-local function createMsgBox(color, buttonText, ...)
-  local args = {...}
-	for i = 1, #args do
-    if type(args[i]) == "table" then args[i] = format.serialise(args[i], false, true, true)
-		else args[i] = tostring(args[i]) end
-	end
-  if #args == 0 then args[1] = "nil" end
-  
-  local container, returnedEventEmitter, close, drawContainer = 
-    _createCloseableContainer(buttonText, #args > 1 and "\"" .. table.concat(args, "\", \"") .. "\"" or args[1], color)
-  drawContainer()
-  return returnedEventEmitter
-end
+  system.loop:start()
 
-function system.alert(...) createMsgBox(GUI.DISABLED_COLOR_2, "OK", ...) end
-function system.successDialog(...) createMsgBox(GUI.SUCCESS_COLOR, "OK", ...) end
-function system.infoDialog(...) createMsgBox(GUI.INFO_COLOR, "OK", ...) end
-function system.warningDialog(...) createMsgBox(GUI.WARN_COLOR, "OK", ...) end
-function system.errorDialog(...) createMsgBox(GUI.ERROR_COLOR, "OK", ...) end
-function system.confirmDialog(text, color)
-  local container, returnedEventEmitter, close, drawContainer, startY = _createCloseableContainer("OK", text, color)
-  local cancelButton = GUI.createButton(screen.getWidth() * 0.75 - 16, startY + 7, 14, 1, "CANCEL", color, 0xEEEEEE, color, 0xFFFFFF)
-  cancelButton.onClick = function() close(false) end
-  container:addChild(cancelButton)
-  drawContainer()
-  return returnedEventEmitter
-end
+  -- -- Start normal code
 
-function system.syncifyDialogBox(eventEmitter)
-  local continue, returned = true, nil
-  eventEmitter:addGlobalListener(function(...) 
-    continue, returned = false, {...}
-  end)
-  while continue do system.processEvents(event.pull()) end
-  return returned
-end
-
-system.createMessageBox = createMsgBox
-
-system.doTerm = true
-
-
-
--- Execute the main system loop
-function system.mainLoop()
-  -- Palette needs to be reset on startup as it is presistent
-  screen.resetPalette()
-  screen.clear()
-  screen.update(true) -- Force update screen after reboot
-
-  -- system.loop.signals:addGlobalListener(function(...)
-  --   system.processEvents(...)
-  -- end)
-
-  -- local button = GUI.createButton(20, 30, 10, 3, "Alert", 0xFFFFFF, 0x0,  0xFF0000, 0x0, 0xFFF000)
-  -- button.onClick = function()
-  --   local e = system.confirmDialog("Hello", GUI.ERROR_COLOR)
-  --   e:on("ok", function() system.successDialog("You clicked ok!") end)
-  --   e:on("cancel", function() system.errorDialog("WHY U CANCEL") end)
-  --   -- system.createMessageBox(GUI.ERROR_COLOR, "(x) Doubt", "⢹⣀⣀⣀⣀⣀⣀\n⢸⣷⣾⣀⣸⠰⢾   This is supposed to be a GPU\n⠘⠉⠛⠛⠙⠋⠉", {a = "b"})
-  --   -- button.hidden = true
+  -- if system.doTerm then
+  --   local result, reason = xpcall(require("shell").getShell(), function(msg)
+  --     return tostring(msg).."\n"..debug.traceback()
+  --   end)
+  --   if not result then
+  --     io.stderr:write((reason ~= nil and tostring(reason) or "unknown error") .. "\n")
+  --     io.write("Press any key to continue.\n")
+  --     os.sleep(0.5)
+  --     require("event").pull("key")
+  --   end
+  -- else
+  --   screen.clear()
+  --   screen.update(true)
+  --   require("event").pull("key")
   -- end
-  -- system.container:addChild(button)
-  -- system.container:addChild(GUI.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
-
-  -- system.loop:start()
-
-  if system.doTerm then
-    local result, reason = xpcall(require("shell").getShell(), function(msg)
-      return tostring(msg).."\n"..debug.traceback()
-    end)
-    if not result then
-      io.stderr:write((reason ~= nil and tostring(reason) or "unknown error") .. "\n")
-      io.write("Press any key to continue.\n")
-      os.sleep(0.5)
-      require("event").pull("key")
-    end
-  else
-    screen.clear()
-    screen.update(true)
-    require("event").pull("key")
-  end
 end
 
 return system

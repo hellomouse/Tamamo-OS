@@ -81,12 +81,12 @@ register background processes called in system.processEvent
 
 todo:
 -2: finish GUI.lua
--1: background container code
 0. system settings
 1. desktop
 2. execute app
 3. taskbar
 
+progress indicator animation boked
 
 
 give credit to lbp for thing (table seralize)
@@ -114,7 +114,6 @@ app
 -- determined from folder
 - app.name
 - app.icon?
-
 
 
 remove thread lib from gui

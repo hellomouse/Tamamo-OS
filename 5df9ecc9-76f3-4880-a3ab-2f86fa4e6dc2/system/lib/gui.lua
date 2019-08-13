@@ -197,7 +197,7 @@ function GUIContainer:create(x, y, width, height, backgroundColor)
 
   obj.skipEventHandler = false
   obj.skipDraw = false
-  obj.stealAllEvents = false
+  obj.blockEvents, obj.passEvents = false, false
 
   return obj
 end
@@ -356,13 +356,14 @@ end
 function GUIContainer:eventHandler(...)
   if self.skipEventHandler then return end
   for i = #self.children, 1, -1 do -- Process higher z-index first
-    if self.children[i] and not self.children[i].disabled and self.children[i].eventHandler then
-      -- Check if the child should steal all events BEFORE
+    if self.children[i] and not self.children[i].disabled and
+       self.children[i].eventHandler and not self.children[i].passEvents then
+      -- We check if the child should block all events BEFORE
       -- the event handler as the event handler could remove
       -- the child or otherwise alter self.children
-      local shouldSteal = self.children[i].stealAllEvents
+      local shouldBlock = self.children[i].blockEvents
       self.children[i]:eventHandler(...)
-      if shouldSteal then return end
+      if shouldBlock then return end
     end
   end
 end
@@ -394,7 +395,7 @@ function GUIObject:create(x, y, width, height)
   obj.overrideSeenChild = false
   obj.type = "GUIObject"
   obj.eventHandler = nil  -- Runs when event is called, override
-  obj.stealAllEvents = false
+  obj.blockEvents, obj.passEvents = false, false
 
   return obj
 end
