@@ -8,7 +8,7 @@ local color = require("color")
 
 -- Color API --
 local getPresetPalette = color.getPresetPalette
-local rgb = color.toHexFromRGB
+local rgb = color.RGBToHex
 
 -- Optimization for lua
 local sub = string.sub

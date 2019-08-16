@@ -21,16 +21,16 @@ local GREENS = {0x00, 0x24, 0x49, 0x6D, 0x92, 0xB6, 0xD8, 0xFF}
 -- to save RAM
 function api.getPresetPalette(i)
   i = i - 1
-  return api.toHexFromRGB(REDS[floor(i / 40) % 6 + 1], GREENS[i % 8 + 1], BLUES[floor(i / 8) % 5 + 1])
+  return api.RGBToHex(REDS[floor(i / 40) % 6 + 1], GREENS[i % 8 + 1], BLUES[floor(i / 8) % 5 + 1])
 end
 
 -- Convert r, g, b values to 24 bit int --
-function api.toHexFromRGB(r, g, b)
+function api.RGBToHex(r, g, b)
   r, g, b = floor(r), floor(g), floor(b)
   return r * 65536 + g * 256 + b
 end
 
-function api.toRGBFromHex(hex)
+function api.HexToRGB(hex)
   local r, g
   r = hex / 65536
   r = r - r % 1
@@ -45,8 +45,8 @@ function api.blend(base, color, amount)
   if amount <= 0 then return color end
 
   local r1, g1, b1, r2, g2, b2
-  r1, g1, b1 = api.toRGBFromHex(base)
-  r2, g2, b2 = api.toRGBFromHex(color)
+  r1, g1, b1 = api.HexToRGB(base)
+  r2, g2, b2 = api.HexToRGB(color)
 
   local inverted = 1 - amount
 				
@@ -55,11 +55,11 @@ function api.blend(base, color, amount)
     g2 * inverted + g1 * amount,
     b2 * inverted + b1 * amount
 
-  return api.toHexFromRGB(r - r % 1, g - g % 1, b - b % 1)
+  return api.RGBToHex(r - r % 1, g - g % 1, b - b % 1)
 end
 
 function api.prettyPrintHex(hex)
-  local r, g, b = api.toRGBFromHex(hex)
+  local r, g, b = api.HexToRGB(hex)
   return "(" .. r .. ", " .. g .. ", " .. b .. ")"
 end
 
@@ -136,7 +136,34 @@ function api.HSVToHex(h, s, v)
   elseif i == 5 then r, g, b = v, p, q
   end
 
-  return api.toHexFromRGB(r * 255, g * 255, b * 255)
+  return api.RGBToHex(r * 255, g * 255, b * 255)
+end
+
+-- See 
+function api.HexToHSV(hex)
+  local r, g, b = api.HexToRGB(hex)
+  
+  r, g, b = r / 255, g / 255, b / 255
+  local max, min = math.max(r, g, b), math.min(r, g, b)
+  local h, s, v
+  v = max
+
+  local d = max - min
+  if max == 0 then s = 0 else s = d / max end
+
+  if max == min then
+    h = 0 -- achromatic
+  else
+    if max == r then
+    h = (g - b) / d
+    if g < b then h = h + 6 end
+    elseif max == g then h = (b - r) / d + 2
+    elseif max == b then h = (r - g) / d + 4
+    end
+    h = h / 6
+  end
+
+  return h, s, v
 end
 
 return api

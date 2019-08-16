@@ -93,33 +93,12 @@ settings = system.getDefaultUserSettings()
 -- Event handler for system --
 function system.processEvents(eventID, ...)
   if not eventID then return end -- Can be nil if no event was pulled for some time
-  local processEventsAfterThisIndex = 0
-
-  -- Event blocking containers do not update lower containers --
-  -- Locate the highest container which for to use a container for --
-  for i = #backgroundContainers, 1, -1 do
-    if backgroundContainers[i].blockEvents then
-      processEventsAfterThisIndex = i
-      break
-    end
-  end
-
-  -- Process Events --
-  if processEventsAfterThisIndex <= 0 then
+  
+  if #backgroundContainers > 0 then
+    backgroundContainers[#backgroundContainers]:eventHandler(eventID, ...)
+  else
     system.container:eventHandler(eventID, ...)
-  end
-  for i = processEventsAfterThisIndex or 1, #backgroundContainers do
-    if backgroundContainers[i] ~= nil then
-      backgroundContainers[i]:eventHandler(eventID, ...)
-    end
-  end
-
-  -- Draw containers bottom up --
-  system.container:draw()
-  for i = 1, #backgroundContainers do
-    if backgroundContainers[i] ~= nil then
-      backgroundContainers[i]:draw()
-    end
+    system.container:draw()
   end
 end
 
@@ -196,8 +175,10 @@ function system.executeProgram(programPath)
 end
 
 -- System popups --
-local function addCloseableContainer(container)
+function system.addSystemOverlay(container)
   container.blockEvents = true
+  container.skipDraw = false
+  system.container.skipDraw = true
 
   -- Add to free spot, or if none then to end of table
   local n = #backgroundContainers
@@ -211,15 +192,20 @@ local function addCloseableContainer(container)
 
   -- Return a function to close the container --
   local function close()
+    backgroundContainers[indexToAddAt].skipDraw = true
     backgroundContainers[indexToAddAt] = nil
+    system.container.skipDraw = false
+    system.container:draw()
   end
 
+  container:draw()
   return close, indexToAddAt
 end
 
 
 -- Add dialog functionality to system --
 require("/system/interface/dialog.lua")(system, settings)
+GUI.loadSystem(system)
 
 system.doTerm = true
 
@@ -247,7 +233,7 @@ function system.mainLoop()
   end
   system.container:addChild(button)
   system.container:addChild(GUI.createSwitch(30, 40, 0x333333, 0xFF0000, 0xFFFFFF))
-  system.container:addChild(GUI.createProgressIndicator(3, 22, 0x333333, 0xFF0000, 0xFFAA00))
+  -- system.container:addChild(GUI.createProgressIndicator(3, 22, 0x333333, 0xFF0000, 0xFFAA00))
 
 
 
@@ -285,7 +271,13 @@ function system.mainLoop()
     screen.drawBrailleRectangle(1, startY + 1, screen.getWidth() / 3, 0.5)
   end
 
-  -- addCloseableContainer(container)
+  system.container:addChild(GUI.createColorPicker(20, 35, 20, 3, "Pick a color", 0xFF0000))
+
+  system.container:draw()
+  screen.clear(0x0, 0.5)
+  -- system.addSystemOverlay(GUI.test())
+
+  -- system.addSystemOverlay(container)
 
   system.loop:start()
 

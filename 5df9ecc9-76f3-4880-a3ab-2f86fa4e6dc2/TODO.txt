@@ -87,6 +87,21 @@ todo:
 3. taskbar
 
 progress indicator animation boked
+indicator drawing broken - overrides shit
+
+
+labels that are too small draw over their bounds- also labels try linebreaks??
+
+
+
+
+
+dropdown potentionally goes out of container
+
+
+remove blockevents - useless, containers block events anyways
+
+
 
 
 give credit to lbp for thing (table seralize)
@@ -138,11 +153,9 @@ brailel canvas
 codeview longest line should be the scrollbar horz
 
 
-color selector 
 component selector
 file selector 
   file selector (button)
-  color selector (button)
 
 right click context menu
 
@@ -168,14 +181,6 @@ check startCol is integer, etc...?
 GUI needs a lot more strict checking ^
 
 
-
-
-
-color pciker - needs some sort of z-indexing
-- instead of 240 buttons calculate from mouse click
-
-
-color picker should be seperate GUI object adedd
 
 
 

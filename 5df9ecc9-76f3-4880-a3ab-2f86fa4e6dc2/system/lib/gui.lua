@@ -190,7 +190,7 @@ function GUIContainer:create(x, y, width, height, backgroundColor)
   local obj = {}                  -- New object
   setmetatable(obj, GUIContainer) -- make GUIContainer handle lookup
 
-  obj.x, obj.y, obj.width, obj.height = x, y, width, height
+  obj.x, obj.y, obj.width, obj.height = floor(x), floor(y), floor(width), floor(height)
   obj.backgroundColor = backgroundColor
   obj.children, obj.isChild = {}, false
   obj.type = "GUIContainer"
@@ -198,6 +198,12 @@ function GUIContainer:create(x, y, width, height, backgroundColor)
   obj.skipEventHandler = false
   obj.skipDraw = false
   obj.blockEvents, obj.passEvents = false, false
+
+  -- Optimization settings, do not touch unless you
+  -- know what you are doing
+  obj.onlyDrawChildOverlap = false
+  obj.skipBackgroundRedrawOnChild = false
+  obj.skipDrawObjectOnChild = false
 
   return obj
 end
@@ -293,9 +299,9 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
   if self.isChild and not self.parent then return end
 
   -- Fill background if parent container or has background
-  if not self.isChild or self.backgroundColor then
+  if (not self.isChild or self.backgroundColor) then
     screen.setBackground(self.backgroundColor or 0x0)
-    if child == nil then
+    if child == nil and not (child and self.skipBackgroundRedrawOnChild) then
       screen.drawRectangle(self.x, self.y, self.width, self.height)
     else
       screen.drawRectangle(child.x, child.y, child.width, child.height)
@@ -306,7 +312,7 @@ function GUIContainer:draw(child, offsetX, offsetY) -- Optional child element to
   self.boundX1, self.boundY1, self.boundX2, self.boundY2 = screen.getDrawingBound()
 
   -- Custom drawing
-  if self.drawObject then self:drawObject() end
+  if self.drawObject and not (child and self.skipDrawObjectOnChild) then self:drawObject() end
 
   for i = 1, #self.children do
     -- Don't render hidden elements
@@ -424,8 +430,6 @@ function Animation:create(aniFunction, stepSize, GUIObj)
 end
 
 function Animation:start(duration, delay)
-  if not system then system = require("/system/system.lua") end
-
   if delay == nil then delay = 0 end
   if self.timer ~= nil then system.detachTimer(self.timer) end
 
@@ -645,11 +649,11 @@ function GUI.createLabel(x, y, text, textColor, width, height, align)
     width, height = len(text), 1
     textWidth, textHeight = width, height
   elseif height == nil or height == "auto" then
-    text, height = format.wrap(text, width)
+    height = 1
     textWidth, textHeight = min(width, len(text)), height
   else
-    text, textHeight = format.wrap(text, width)
-    textWidth = min(width, len(text))
+    textHeight = 1
+    textWidth = len(text)
   end
 
   local label = GUIObject:create(x, y, width, height)
@@ -1095,11 +1099,11 @@ local function inputEventHandler(input, ...)
     -- Check bounds for touch
     local x, y = select(3, ...), select(4, ...)
     if isOutside(input, x, y) then
-        if input.focused then
-          input.focused = false
-          input:draw()
-        end
-        return
+      if input.focused then
+        input.focused = false
+        input:draw()
+      end
+      return
     end
 
     -- Focus the input and set the cursor
@@ -2233,59 +2237,273 @@ end
 
 
 
--- Color Picker (Basic OC palette) --
+-- Color Picker Container --
 ------------------------------------------------
+local colorPickerContainer
+local colorPickerColor, colorPickerPrevColor = 0xFF0000, 0xFF0000
+local colorPickerX, colorPickerY, colorPickerV, colorPickerSaved = 1, 1, 1, {}
+local colorPickerMaxSaveSize = 6
 
--- TODO move to func to create new contaner
--- local colorPickerContainer = GUI.createPanel(55, 8, 65, 25, 0x333333, 1, 1, true)
--- colorPickerContainer.overrideBound = true
+local function createColorPicker()
+  colorPickerContainer = GUI.createContainer(screen.getWidth() / 2 - 65 / 2, screen.getHeight() / 2 - 25 / 2, 66, 25, 0x222222)
+  local colorPickerInputLeftX = 52
+  local colorPickerInputTopY = 5
 
--- -- Create the color picker grid
--- do
---   local buttonColor
+  local colorSelectorPartWidth = 45
+  local colorSelectorPartHeight = 25
+  local brightnessBarHeight = 21
 
---   -- The current square is like a 2D slice of a cube, each dimension
---   -- corresponding to H, S, and V (The 2D slice is x = H, y = S) (z / up / down is V)
---   for y = 1, 20 do
---     for x = 1, 40 do
---       buttonColor = color.HSVToHex(x / 40, 1 - y / 20, 1)
---       colorPickerContainer.addChild(GUI.createButton(x, y + 1, 1, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
---     end
---   end
+  -- Optimization --
+  colorPickerContainer.skipBackgroundRedrawOnChild = true
+  colorPickerContainer.skipDrawObjectOnChild = true
 
---   -- Side slider
---   for y = 1, 20 do
---     buttonColor = color.HSVToHex(1 / 40, 1 - 1/ 20, 1 - y / 20)
---     colorPickerContainer.addChild(GUI.createButton(x + 28, y + 1, 2, 1, " ", buttonColor, buttonColor, buttonColor, buttonColor))
---   end
+  -- Create the color picker grid
+  colorPickerContainer.drawObject = function(container)
+    -- The current square is like a 2D slice of a cube, each dimension
+    -- corresponding to H, S, and V (The 2D slice is x = H, y = S) (z / up / down is V)
+    screen.setForeground(colorPickerV > 0.5 and 0x0 or 0xFFFFFF)
 
---   -- Side input values for HSV and RGB
---   colorPickerContainer.addChild(GUI.createLabel(47, 2, "R: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 2, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+    for y = 1, colorSelectorPartHeight do
+      for x = 1, colorSelectorPartWidth do
+        screen.setBackground(color.HSVToHex(x / colorSelectorPartWidth, 1 - y / colorSelectorPartHeight, colorPickerV))
+        screen.set(container.x + x - 1, container.y + y - 1, (x == colorPickerX and y == colorPickerY and "□") or " ")
+      end
+    end
 
---   colorPickerContainer.addChild(GUI.createLabel(47, 4, "G: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 4, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+    -- Side slider for brightness --
+    for y = 1, brightnessBarHeight do
+      screen.setBackground(color.HSVToHex(colorPickerX / colorSelectorPartWidth, 1 - colorPickerY / colorSelectorPartHeight, 1 - y / brightnessBarHeight))
+      screen.set(container.x + 47, container.y + y, "  ")
+    end
 
---   colorPickerContainer.addChild(GUI.createLabel(47, 6, "B: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 6, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+    -- Arrow for side slider --
+    screen.setForeground(0xFFFFFF)
+    drawText(container.x + 49, container.y + 1 + (brightnessBarHeight - 1) * (1 - colorPickerV), "<")
 
---   colorPickerContainer.addChild(GUI.createLabel(47, 9, "H: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 9, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+    -- Top values for "current" and "previous" colors --
+    screen.setBackground(colorPickerColor)
+    screen.drawRectangle(container.x + colorPickerInputLeftX, container.y + 1, 6, 3)
+    screen.setBackground(colorPickerPrevColor)
+    screen.drawRectangle(container.x + colorPickerInputLeftX + 6, container.y + 1, 6, 3)
 
---   colorPickerContainer.addChild(GUI.createLabel(47, 11, "S: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 11, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+    -- Currently saved colors --
+    for i = 1, #colorPickerSaved do
+      screen.setBackground(colorPickerSaved[i])
+      screen.set(container.x + container.width - 16 + i * 2, container.y + container.height - 6, "  ")
+    end
+  end
 
---   colorPickerContainer.addChild(GUI.createLabel(47, 13, "V: ", 0x0, 5, 1))
---   colorPickerContainer.addChild(GUI.createInput(51, 13, 5, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF))
+  -- Inputs --
+  local function makeRGBHSVInput(dy)
+    return GUI.createInput(colorPickerInputLeftX + 4, colorPickerInputTopY + dy, 8, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF)
+  end
 
--- end
+  local rinput = makeRGBHSVInput(0)
+  local ginput = makeRGBHSVInput(2)
+  local binput = makeRGBHSVInput(4)
+  local hinput = makeRGBHSVInput(6)
+  local sinput = makeRGBHSVInput(8)
+  local vinput = makeRGBHSVInput(10)
+  local colorinput = GUI.createInput(colorPickerInputLeftX + 2, colorPickerInputTopY + 12, 10, 1, 0x555555, 0xAAAAAA, 0x777777, 0xFFFFFF)
 
-local function drawPicker(picker)
-  colorPickerContainer:draw()
+  -- Event handler for container --
+  local oldEventHandler = colorPickerContainer.eventHandler
+
+  local function updateRGBInputs()
+    local r,g,b = color.HexToRGB(colorPickerColor)
+    rinput.value, ginput.value, binput.value = r .. "", g .. "", b .. ""
+  end
+  local function updateHSVInputs()
+    hinput.value, sinput.value, vinput.value = 
+      floor(colorPickerX / colorSelectorPartWidth * 100 + 0.5) .. "",
+      floor((1 - colorPickerY / colorSelectorPartHeight) * 100 + 0.5) .. "",
+      floor(colorPickerV * 100 + 0.5) .. ""
+  end
+  local function updateRGBHSVInputs()
+    updateRGBInputs()
+    updateHSVInputs()
+  end
+  local function updateXYV()
+    colorPickerX, colorPickerY, colorPickerV = color.HexToHSV(colorPickerColor)
+    colorPickerX, colorPickerY = floor(colorSelectorPartWidth * colorPickerX + 1),
+                                floor(colorSelectorPartHeight * (1 - colorPickerY) + 1)
+  end
+  local function updateHex()
+    colorinput.value = string.format("%x", colorPickerColor)
+  end
+  local function calculateNewColors(method)
+    -- There are 3 methods to updating:
+    -- (default: 0 or nil)      - Updates all input values
+    -- (updating rgb: 1)        - Updates hex input and x/y value and hsv input
+    -- (updating hsv: 2)        - Updates hex input and x/y value and rgb input
+    -- (updating hex value: 3)  - Update rgb + hsv input and x/y value
+    -- (updating directly: 4)   - Update everything
+
+    if not method then
+      colorPickerColor = color.HSVToHex(colorPickerX / colorSelectorPartWidth, 1 - colorPickerY / colorSelectorPartHeight, colorPickerV)
+      updateRGBHSVInputs()
+      updateHex()
+    elseif method == 1 then
+      if #rinput.value == 0 or #ginput.value == 0 or #binput.value == 0 then return end -- Validation
+      colorPickerColor = color.RGBToHex(tonumber(rinput.value), tonumber(ginput.value), tonumber(binput.value))
+      updateHSVInputs()
+      updateXYV()
+      updateHex()
+    elseif method == 2 then
+      if #hinput.value == 0 or #sinput.value == 0 or #vinput.value == 0 then return end -- Validation
+      colorPickerColor = color.HSVToHex(tonumber(hinput.value) / 100, tonumber(sinput.value) / 100, tonumber(vinput.value) / 100)
+      updateRGBInputs()
+      updateXYV()
+      updateHex()
+    elseif method == 3 then
+      if #colorinput.value == 0 then return end -- Validation
+      colorPickerColor = tonumber(colorinput.value, 16)
+      updateRGBHSVInputs()
+      updateXYV()
+    elseif method == 4 then
+      updateXYV()
+      updateRGBHSVInputs()
+      updateHex()
+    end
+
+    -- Redraw on these events (input might be updated)
+    -- We must manually specify to draw as skipDrawObjectOnChild is true
+    -- for optimization purposes, meaning that the color slider and map
+    -- won't update on one of its children GUI objects calling :draw()
+    colorPickerContainer:draw()
+  end
+
+  colorPickerContainer.calculateNewColors = calculateNewColors -- Needed outside of colorPickerContainer
+
+  -- On input updates
+  colorinput.onInput = function() calculateNewColors(3) end
+  rinput.onInput = function() calculateNewColors(1) end
+  ginput.onInput, binput.onInput = rinput.onInput, rinput.onInput
+  hinput.onInput = function() calculateNewColors(2) end
+  sinput.onInput, vinput.onInput = hinput.onInput, hinput.onInput
+
+  -- Input validation
+  colorinput.validate = function(val)
+    if len(val) > 6 then return false end
+    return tonumber(val, 16) ~= nil
+  end
+  local function validateRGB(val)
+    local n = tonumber(val)
+    return n ~= nil and n >= 0 and n <= 255
+  end
+  rinput.validate, ginput.validate, binput.validate = validateRGB, validateRGB, validateRGB
+  local function validateHSV(val)
+    local n = tonumber(val)
+    return n ~= nil and n >= 0 and n <= 100
+  end
+  hinput.validate, sinput.validate, vinput.validate = validateHSV, validateHSV, validateHSV
+    
+  colorPickerContainer.eventHandler = function(container, etype, ...)
+    -- Click event for selecting brightess or color --
+    if etype == "touch" or etype == "drag" then
+      local x, y = select(2, ...) - container.x + 1, select(3, ...) - container.y + 1
+      x, y = max(x, 1), max(min(y, colorSelectorPartHeight), 1)
+      if x <= colorSelectorPartWidth then -- Left part
+        colorPickerX, colorPickerY = x, y
+        calculateNewColors()              -- Brightness slider
+      elseif x >= colorSelectorPartWidth + 2 and x < colorSelectorPartWidth + 5 and
+             y >= 1 and y < brightnessBarHeight + 2 then
+        colorPickerV = 1 - (y - 1) / brightnessBarHeight
+        calculateNewColors()
+      elseif x >= container.width - 16 and x <= container.width - 14 + colorPickerMaxSaveSize * 2 and
+             y >= container.height - 5 and y < container.height - 4 then
+        local index = floor((x - (container.width - 15)) / 2)
+        if colorPickerSaved[index] ~= nil then
+          colorPickerColor = colorPickerSaved[index]
+          calculateNewColors(4)
+        end
+      end
+    end
+
+    oldEventHandler(container, etype, ...)
+  end
+
+  -- Side input values for HSV and RGB
+  local function makeRGBHSVLabel(dy, text, noColon)
+    return GUI.createLabel(colorPickerInputLeftX, colorPickerInputTopY + dy, text .. (not noColon and ": " or ""), 0xFFFFFF, 5, 1)
+  end
+
+  local labelNames = {"R", "G", "B", "H", "S", "V"}
+  local inputsToAdd = {rinput, ginput, binput, hinput, sinput, vinput}
+  for i = 1, #labelNames do
+    colorPickerContainer:addChild(makeRGBHSVLabel((i - 1) * 2, labelNames[i]))
+    colorPickerContainer:addChild(inputsToAdd[i])
+  end
+
+  colorPickerContainer:addChild(makeRGBHSVLabel(12, "#", true))
+  colorPickerContainer:addChild(colorinput)
+
+  -- Ok and cancel button --
+  colorPickerContainer.OKButton = GUI.createButton(colorPickerInputLeftX + 4, colorPickerContainer.height - 2, 9, 1, "OK", GUI.DISABLED_COLOR_1, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF)
+  colorPickerContainer.CancelButton = GUI.createButton(colorPickerInputLeftX - 6, colorPickerContainer.height - 2, 9, 1, "Cancel", GUI.DISABLED_COLOR_1, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF)
+  colorPickerContainer:addChild(colorPickerContainer.OKButton)
+  colorPickerContainer:addChild(colorPickerContainer.CancelButton)
+
+  -- Current colors button --
+  local addNewColorButton = GUI.createButton(colorPickerContainer.width - 14, colorPickerContainer.height - 5, 12, 1, "+", GUI.DISABLED_COLOR_1, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF)
+  addNewColorButton.onClick = function(button)
+    if #colorPickerSaved < colorPickerMaxSaveSize then
+      colorPickerSaved[#colorPickerSaved + 1] = colorPickerColor
+    else
+      for i = 2, colorPickerMaxSaveSize do colorPickerSaved[i - 1] = colorPickerSaved[i] end
+      colorPickerSaved[colorPickerMaxSaveSize] = colorPickerColor
+    end
+    colorPickerContainer:draw()
+  end
+  colorPickerContainer:addChild(addNewColorButton)
+
+  -- Pregen the input values --
+  calculateNewColors(4)
 end
 
-local function pickerEventHandler(picker, ...)
-  colorPickerContainer.eventHandler(colorPickerContainer, ...)
+
+function GUI.test()
+  return colorPickerContainer
+end
+
+
+-- Color Picker (GUI object) --
+------------------------------------------------
+local function drawPicker(picker)
+  screen.setBackground(picker.currentColor)
+  screen.drawRectangle(picker.x, picker.y, picker.width, picker.height)
+
+  -- Shadow on the bottom (If enough room) --
+  if picker.height > 1 then
+    screen.setBackground(0x0)
+    screen.drawBrailleRectangle(picker.x, picker.y + picker.height - 0.5, picker.width, 0.5, 0.5)
+  end
+
+  screen.setForeground(colorPickerV > 0.5 and 0x0 or 0xFFFFFF)
+  screen.drawText(picker.x + 1, picker.y + picker.height / 2, format.trimLength(picker.text, picker.width - 2))
+end
+
+local function pickerEventHandler(picker, etype, ...)
+  if etype == "touch" or etype == "drag" then
+    local x, y = select(2, ...), select(3, ...)
+    if isOutside(picker, x, y) then return end
+
+    screen.clear(0x0, 0.5) -- Darken background
+    screen.setBackground(0x0) -- Drop shadow
+    screen.drawBrailleRectangle(colorPickerContainer.x, colorPickerContainer.y + colorPickerContainer.height, colorPickerContainer.width, 0.5)
+    local close = system.addSystemOverlay(colorPickerContainer) -- Show picker
+
+    -- Set color picker color to current selected --
+    colorPickerColor, colorPickerPrevColor = picker.currentColor, picker.currentColor
+    colorPickerContainer.calculateNewColors(4)
+
+    colorPickerContainer.OKButton.onClick = function()
+      picker.currentColor = colorPickerColor
+      if picker.onSelection then picker:onSelection(colorPickerColor) end
+      close()
+    end
+    colorPickerContainer.CancelButton.onClick = close
+  end
 end
 
 function GUI.createColorPicker(x, y, width, height, text, currentColor)
@@ -2300,11 +2518,27 @@ function GUI.createColorPicker(x, y, width, height, text, currentColor)
   picker.currentColor = currentColor
 
   -- Additional picker properties --
-  picker.type = "colorPickerBasic"
+  picker.type = "colorpicker"
   picker.drawObject = drawPicker
   picker.eventHandler = pickerEventHandler
 
+  -- Configurable properties --
+  picker.onSelection = nil
   return picker
+end
+
+
+
+
+
+
+-- Loading in for system --
+function GUI.loadSystem(sys)
+  if system then return end
+  system = sys
+
+  -- Create dialog popup containers --
+  createColorPicker()
 end
 
 -- Return API
