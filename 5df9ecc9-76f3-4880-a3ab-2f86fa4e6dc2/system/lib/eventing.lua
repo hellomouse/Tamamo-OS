@@ -329,7 +329,7 @@ function EventLoop:start()
     end
 end
 
-function async(fn)
+local function async(fn)
     return function(...)
         local args = table.pack(...)
         local promise = Promise:create()
@@ -346,7 +346,7 @@ function async(fn)
     end
 end
 
-function await(promise)
+local function await(promise)
     local co = coroutine.running()
     if not co then error('await can only be called in an async function') end
     local result = nil

@@ -13,7 +13,7 @@ local function sleep(seconds)
   return promise
 end
 
-local yay1 = eventing.async(function()
+local yay1 = async(function()
   await(sleep(3))
   print('waited for 3 seconds')
 end)
